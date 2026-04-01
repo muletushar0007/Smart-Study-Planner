@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intelligence Planner — StudyFlow</title>
+    <meta name="description" content="Create your high-performance study plan in 3 smart steps.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='planner.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Ambient orbs -->
+    <div class="planner-orb planner-orb-1"></div>
+    <div class="planner-orb planner-orb-2"></div>
+
+    <div class="app-container">
+        <!-- Navbar -->
+        <nav class="top-navbar">
+            <a href="/" class="navbar-brand">
+                <div class="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+                <span class="logo-text primary-gradient-text" style="font-size:1.25rem;">StudyFlow</span>
+            </a>
+            <div class="navbar-actions">
+                <a href="/dashboard" class="dash-nav-pill" style="font-size:0.85rem;padding:0.5rem 1.1rem;text-decoration:none;">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard
+                </a>
+                <button id="theme-toggle" class="theme-switch-btn" title="Toggle Theme">
+                    <i class="fa-solid fa-circle-half-stroke"></i>
+                </button>
+            </div>
+        </nav>
+
+        <main class="planner-main">
+
+            <!-- ── Left: Wizard ── -->
+            <div class="planner-wizard">
+
+                <!-- Header -->
+                <div class="planner-wizard-header">
+                    <p class="planner-eyebrow"><span class="eyebrow-dot"></span> AI-Powered Planner</p>
+                    <h1 class="planner-title">Intelligence<br><span class="primary-gradient-text">Planner</span></h1>
+                    <p class="planner-subtitle">3 steps. Seconds to build. A full week unlocked.</p>
+                </div>
+
+                <!-- Flash errors -->
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div class="planner-flash">
+                    {% for message in messages %}
+                    <div class="flash-item"><i class="fa-solid fa-triangle-exclamation"></i> {{ message }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                <!-- Step progress bar -->
+                <div class="step-progress">
+                    <div class="step-track">
+                        <div class="step-fill" id="step-fill"></div>
+                    </div>
+                    <div class="step-pills">
+                        <div class="step-pill active" id="pill-1" onclick="goToStep(1)">
+                            <div class="step-num">1</div>
+                            <div class="step-lbl">Schedule</div>
+                        </div>
+                        <div class="step-pill" id="pill-2" onclick="goToStep(2)">
+                            <div class="step-num">2</div>
+                            <div class="step-lbl">Habits</div>
+                        </div>
+                        <div class="step-pill" id="pill-3" onclick="goToStep(3)">
+                            <div class="step-num">3</div>
+                            <div class="step-lbl">Subjects</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FORM -->
+                <form action="/analyze" method="POST" id="studyForm" novalidate>
+
+                    <!-- ══ STEP 1: Schedule ══ -->
+                    <div class="wizard-step active" id="step-1">
+                        <div class="step-card">
+                            <div class="step-card-header">
+                                <div class="step-icon-badge"><i class="fa-solid fa-calendar-days"></i></div>
+                                <div>
+                                    <div class="step-card-title">Your Schedule</div>
+                                    <div class="step-card-sub">When's the big day? What's on your plate?</div>
+                                </div>
+                            </div>
+
+                            <!-- Exam date -->
+                            <div class="field-group">
+                                <label class="field-label"><i class="fa-solid fa-bullseye"></i> Target Exam Date</label>
+                                <div class="field-input-wrap">
+                                    <input type="date" name="exam_date" id="exam_date" class="planner-input" required>
+                                </div>
+                                <div class="field-hint" id="exam-hint">Pick your exam date and we'll count down the days 🎯</div>
+                            </div>
+
+                            <!-- Syllabus % -->
+                            <div class="field-group">
+                                <label class="field-label"><i class="fa-solid fa-percent"></i> Syllabus Completed So Far</label>
+                                <div class="slider-wrap">
+                                    <input type="range" name="syllabus_percentage" id="syllabus_slider" class="planner-slider" min="0" max="100" value="40" step="5">
+                                    <div class="slider-bubble" id="syllabus_bubble">40%</div>
+                                </div>
+                                <div class="slider-labels">
+                                    <span>0%</span>
+                                    <span class="slider-val-pill" id="syllabus-val">40%</span>
+                                    <span>100%</span>
+                                </div>
+                                <div class="field-hint" id="syllabus-hint">You've covered 40% — keep pushing! 📚</div>
+                            </div>
+
+                            <!-- College hours -->
+                            <div class="field-group">
+                                <label class="field-label"><i class="fa-solid fa-school"></i> Daily College / Class Hours</label>
+                                <div class="slider-wrap">
+                                    <input type="range" name="college_hours" id="college_slider" class="planner-slider" min="0" max="12" value="6" step="0.5">
+                                    <div class="slider-bubble" id="college_bubble">6h</div>
+                                </div>
+                                <div class="slider-labels">
+                                    <span>0h</span>
+                                    <span class="slider-val-pill" id="college-val">6 hrs</span>
+                                    <span>12h</span>
+                                </div>
+                                <div class="field-hint" id="college-hint">6 hours in college — your study windows are morning &amp; evening 🏫</div>
+                            </div>
+
+                            <!-- Quick suggestions row -->
+                            <div class="quick-suggestions">
+                                <div class="qs-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Quick Presets</div>
+                                <div class="qs-pills">
+                                    <button type="button" class="qs-pill" onclick="applyPreset('light')">🌤 Light Day</button>
+                                    <button type="button" class="qs-pill" onclick="applyPreset('balanced')">⚖️ Balanced</button>
+                                    <button type="button" class="qs-pill" onclick="applyPreset('intense')">🔥 Intense</button>
+                                    <button type="button" class="qs-pill" onclick="applyPreset('exam')">🎓 Pre-Exam</button>
+                                </div>
+                            </div>
+
+                            <div class="step-nav">
+                                <div></div>
+                                <button type="button" class="step-next-btn" onclick="nextStep(1)">
+                                    Next: Habits <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ══ STEP 2: Habits ══ -->
+                    <div class="wizard-step" id="step-2">
+                        <div class="step-card">
+                            <div class="step-card-header">
+                                <div class="step-icon-badge" style="background:rgba(16,185,129,0.12);color:#10b981;"><i class="fa-solid fa-heart-pulse"></i></div>
+                                <div>
+                                    <div class="step-card-title">Your Habits</div>
+                                    <div class="step-card-sub">Be honest — the AI works best with real data</div>
+                                </div>
+                            </div>
+
+                            <!-- Study hours slider -->
+                            <div class="field-group">
+                                <label class="field-label"><i class="fa-solid fa-book-open"></i> Daily Study Hours</label>
+                                <div class="slider-wrap">
+                                    <input type="range" name="study_hours" id="study_slider" class="planner-slider" min="1" max="16" value="5" step="0.5">
+                                    <div class="slider-bubble" id="study_bubble">5h</div>
+                                </div>
+                                <div class="slider-labels">
+                                    <span>1h</span>
+                                    <span class="slider-val-pill" id="study-val">5 hrs</span>
+                                    <span>16h</span>
+                                </div>
+                                <div class="field-hint feedback-text" id="study-hint">Great! 5 hours daily builds real momentum 💪</div>
+                            </div>
+
+                            <!-- Sleep hours slider -->
+                            <div class="field-group">
+                                <label class="field-label"><i class="fa-solid fa-bed"></i> Sleep Goal (Hours)</label>
+                                <div class="slider-wrap">
+                                    <input type="range" name="sleep_hours" id="sleep_slider" class="planner-slider" min="4" max="10" value="7" step="0.5">
+                                    <div class="slider-bubble" id="sleep_bubble">7h</div>
+                                </div>
+                                <div class="slider-labels">
+                                    <span>4h</span>
+                                    <span class="slider-val-pill" id="sleep-val">7 hrs</span>
+                                    <span>10h</span>
+                                </div>
+                                <div class="field-hint feedback-text" id="sleep-hint">7 hours is the sweet spot — your brain will thank you 🧠</div>
+                            </div>
+
+                            <!-- Distraction slider -->
+                            <div class="field-group">
+                                <label class="field-label"><i class="fa-solid fa-ghost"></i> Estimated Distraction Hours</label>
+                                <div class="slider-wrap">
+                                    <input type="range" name="distraction_hours" id="distraction_slider" class="planner-slider slider-red" min="0" max="10" value="2" step="0.5">
+                                    <div class="slider-bubble" id="distraction_bubble">2h</div>
+                                </div>
+                                <div class="slider-labels">
+                                    <span>0h</span>
+                                    <span class="slider-val-pill" id="distraction-val">2 hrs</span>
+                                    <span>10h</span>
+                                </div>
+                                <div class="field-hint feedback-text" id="distraction-hint">2 hours is manageable — keep scrolling time in check 📱</div>
+                            </div>
+
+                            <!-- Hours validation warning -->
+                            <div class="hours-warning" id="hours-warning" style="display:none;">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                                <span id="hours-warning-text">Total hours exceed 24h — adjust your schedule!</span>
+                            </div>
+
+                            <div class="step-nav">
+                                <button type="button" class="step-back-btn" onclick="prevStep(2)">
+                                    <i class="fa-solid fa-arrow-left"></i> Back
+                                </button>
+                                <button type="button" class="step-next-btn" onclick="nextStep(2)">
+                                    Next: Subjects <i class="fa-solid fa-arrow-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ══ STEP 3: Subjects ══ -->
+                    <div class="wizard-step" id="step-3">
+                        <div class="step-card">
+                            <div class="step-card-header">
+                                <div class="step-icon-badge" style="background:rgba(249,115,22,0.12);color:#f97316;"><i class="fa-solid fa-graduation-cap"></i></div>
+                                <div>
+                                    <div class="step-card-title">Your Subjects</div>
+                                    <div class="step-card-sub">Add what you need to cover — we'll prioritize for you</div>
+                                </div>
+                            </div>
+
+                            <!-- Subject list -->
+                            <div id="subjectContainer" class="subject-list"></div>
+
+                            <button type="button" class="add-subject-btn" id="addSubject" onclick="addSubject()">
+                                <i class="fa-solid fa-plus"></i> Add Another Subject
+                            </button>
+
+                            <!-- Productivity preview in step 3 -->
+                            <div class="productivity-preview" id="productivity-preview">
+                                <div class="pp-label">Estimated Productivity Score</div>
+                                <div class="pp-bar-wrap">
+                                    <div class="pp-bar-fill" id="pp-bar-fill"></div>
+                                </div>
+                                <div class="pp-score" id="pp-score">—</div>
+                            </div>
+
+                            <div class="step-nav" style="margin-top:2rem;">
+                                <button type="button" class="step-back-btn" onclick="prevStep(3)">
+                                    <i class="fa-solid fa-arrow-left"></i> Back
+                                </button>
+                                <button type="submit" class="generate-btn" id="generate-btn">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                    <span>Generate My Plan</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </form>
+            </div><!-- /wizard -->
+
+            <!-- ── Right: Live Preview Panel ── -->
+            <aside class="planner-preview">
+                <div class="preview-header">
+                    <div class="preview-title">Live Preview</div>
+                    <div class="preview-badge"><i class="fa-solid fa-bolt"></i> Real-time</div>
+                </div>
+
+                <!-- Stats row -->
+                <div class="preview-stats">
+                    <div class="prev-stat">
+                        <div class="prev-stat-val" id="prev-days">—</div>
+                        <div class="prev-stat-lbl">Days Left</div>
+                    </div>
+                    <div class="prev-stat">
+                        <div class="prev-stat-val" id="prev-free">—</div>
+                        <div class="prev-stat-lbl">Free Hrs/Day</div>
+                    </div>
+                    <div class="prev-stat">
+                        <div class="prev-stat-val" id="prev-score">—</div>
+                        <div class="prev-stat-lbl">Est. Score</div>
+                    </div>
+                </div>
+
+                <!-- 24h day breakdown donut -->
+                <div class="preview-donut-wrap">
+                    <svg class="preview-donut" viewBox="0 0 120 120" id="donut-svg">
+                        <circle class="donut-bg" cx="60" cy="60" r="48"/>
+                        <!-- study arc -->
+                        <circle class="donut-arc" id="arc-study" cx="60" cy="60" r="48"
+                            style="stroke:#6366f1;" stroke-dasharray="0 301.59" stroke-dashoffset="0"/>
+                        <!-- sleep arc -->
+                        <circle class="donut-arc" id="arc-sleep" cx="60" cy="60" r="48"
+                            style="stroke:#10b981;" stroke-dasharray="0 301.59" stroke-dashoffset="0"/>
+                        <!-- college arc -->
+                        <circle class="donut-arc" id="arc-college" cx="60" cy="60" r="48"
+                            style="stroke:#f97316;" stroke-dasharray="0 301.59" stroke-dashoffset="0"/>
+                        <!-- distraction arc -->
+                        <circle class="donut-arc" id="arc-distraction" cx="60" cy="60" r="48"
+                            style="stroke:#f43f5e;" stroke-dasharray="0 301.59" stroke-dashoffset="0"/>
+                    </svg>
+                    <div class="donut-center">
+                        <div class="donut-center-val" id="donut-free">24h</div>
+                        <div class="donut-center-lbl" id="donut-center-lbl">free</div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="donut-legend">
+                    <div class="legend-item"><span class="legend-dot" style="background:#6366f1;"></span> Study</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#10b981;"></span> Sleep</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#f97316;"></span> College</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#f43f5e;"></span> Distraction</div>
+                </div>
+
+                <!-- Mini schedule preview -->
+                <div class="preview-schedule-title">Sample Day Blocks</div>
+                <div class="preview-schedule" id="preview-schedule"></div>
+
+                <!-- Motivational tip -->
+                <div class="preview-tip" id="preview-tip">
+                    <i class="fa-solid fa-lightbulb"></i>
+                    <span id="tip-text">Fill in your schedule to see your personalized plan come to life ✨</span>
+                </div>
+            </aside>
+
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+    /* ───────────────────────────────────────────────
+       STATE
+    ─────────────────────────────────────────────── */
+    let currentStep = 1;
+    const TOTAL_STEPS = 3;
+
+    const tips = [
+        "Hard subjects first — tackle them when your energy peaks! 🚀",
+        "Take a 5-min break every 45 minutes to stay sharp ⏱",
+        "Consistency beats intensity — daily practice wins 🏆",
+        "Your brain consolidates memory during sleep — don't skip it 💤",
+        "Remove phone from your study space to cut distraction time 📵",
+        "Active recall beats re-reading — quiz yourself! 📝",
+    ];
+
+    let tipIndex = 0;
+    setInterval(() => {
+        tipIndex = (tipIndex + 1) % tips.length;
+        const el = document.getElementById('tip-text');
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        setTimeout(() => {
+            el.textContent = tips[tipIndex];
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+        }, 350);
+    }, 6000);
+
+    /* ───────────────────────────────────────────────
+       STEP NAVIGATION
+    ─────────────────────────────────────────────── */
+    function goToStep(n) {
+        if (n < currentStep) {
+            currentStep = n;
+            updateStepUI();
+        }
+    }
+
+    function nextStep(current) {
+        if (!validateStep(current)) return;
+        currentStep = current + 1;
+        updateStepUI();
+        updatePreview();
+        if (currentStep === 3) computeProductivity();
+    }
+
+    function prevStep(current) {
+        currentStep = current - 1;
+        updateStepUI();
+    }
+
+    function updateStepUI() {
+        for (let i = 1; i <= TOTAL_STEPS; i++) {
+            document.getElementById(`step-${i}`).classList.toggle('active', i === currentStep);
+            const pill = document.getElementById(`pill-${i}`);
+            pill.classList.toggle('active', i === currentStep);
+            pill.classList.toggle('done', i < currentStep);
+        }
+        const pct = ((currentStep - 1) / (TOTAL_STEPS - 1)) * 100;
+        document.getElementById('step-fill').style.width = pct + '%';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ───────────────────────────────────────────────
+       VALIDATION
+    ─────────────────────────────────────────────── */
+    function validateStep(step) {
+        if (step === 1) {
+            const examDate = document.getElementById('exam_date').value;
+            if (!examDate) {
+                shakeField('exam_date');
+                showToast('Please pick an exam date first 📅');
+                return false;
+            }
+            const examD = new Date(examDate);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            if (examD < today) {
+                shakeField('exam_date');
+                showToast("Exam date can't be in the past ⏪");
+                return false;
+            }
+        }
+        if (step === 2) {
+            const total = getTotalHours();
+            if (total > 24) {
+                showToast(`Total hours (${total}h) exceed 24h — reduce something! ⚠️`);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function getTotalHours() {
+        const study = parseFloat(document.getElementById('study_slider').value) || 0;
+        const sleep = parseFloat(document.getElementById('sleep_slider').value) || 0;
+        const distraction = parseFloat(document.getElementById('distraction_slider').value) || 0;
+        const college = parseFloat(document.getElementById('college_slider').value) || 0;
+        return study + sleep + distraction + college;
+    }
+
+    function shakeField(id) {
+        const el = document.getElementById(id);
+        el.classList.add('shake');
+        setTimeout(() => el.classList.remove('shake'), 500);
+    }
+
+    /* ───────────────────────────────────────────────
+       TOAST
+    ─────────────────────────────────────────────── */
+    function showToast(msg) {
+        let t = document.getElementById('planner-toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'planner-toast';
+            t.className = 'planner-toast';
+            document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => t.classList.remove('show'), 3200);
+    }
+
+    /* ───────────────────────────────────────────────
+       SLIDERS
+    ─────────────────────────────────────────────── */
+    function initSlider(sliderId, bubbleId, valId, unit, hintId, hintFn, colorFn) {
+        const slider = document.getElementById(sliderId);
+        const bubble = document.getElementById(bubbleId);
+        const valEl  = document.getElementById(valId);
+        const hint   = document.getElementById(hintId);
+
+        function update() {
+            const v = parseFloat(slider.value);
+            const pct = ((v - slider.min) / (slider.max - slider.min)) * 100;
+            bubble.textContent = v + unit;
+            valEl.textContent = v + (unit === '%' ? '%' : ' hrs');
+
+            // Position bubble
+            bubble.style.left = `calc(${pct}% + (${8 - pct * 0.16}px))`;
+
+            // Gradient fill
+            const color = colorFn ? colorFn(v) : '#6366f1';
+            slider.style.background = `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--border-strong) ${pct}%, var(--border-strong) 100%)`;
+
+            if (hint && hintFn) hint.textContent = hintFn(v);
+            updatePreview();
+            validateHours();
+        }
+
+        slider.addEventListener('input', update);
+        update();
+    }
+
+    // Study hours hints
+    function studyHint(v) {
+        if (v < 2)  return "That's quite low — try aiming for at least 3 hours 💡";
+        if (v < 4)  return "Decent start! You can do more 📈";
+        if (v <= 6) return `Great! ${v} hours daily builds real momentum 💪`;
+        if (v <= 9) return `${v} hours — serious student mode! 🔥`;
+        return `${v} hours — superhuman! Make sure to take breaks 🏋️`;
+    }
+    // Sleep hints
+    function sleepHint(v) {
+        if (v < 6)  return "⚠️ Less than 6h hurts memory & focus!";
+        if (v === 7 || v === 7.5) return "7 hours is the sweet spot — your brain will thank you 🧠";
+        if (v >= 8) return `${v} hours — well-rested and ready to learn! 😴`;
+        return `${v} hours of sleep — pretty good!`;
+    }
+    // Distraction hints
+    function distractionHint(v) {
+        if (v === 0) return "Zero distractions — are you a monk? Respect! 🧘";
+        if (v <= 2)  return `${v} hours is manageable — keep scrolling time in check 📱`;
+        if (v <= 4)  return `${v} hours of distraction — try cutting it by 30 min each day 🎯`;
+        return `🚨 ${v} hours of distraction is HIGH — your productivity will suffer!`;
+    }
+    // College hints
+    function collegeHint(v) {
+        if (v === 0) return "No college hours — full day focus mode! 🏠";
+        if (v <= 4)  return `${v} hours in class — you have plenty of time to study! 📚`;
+        if (v <= 7)  return `${v} hours in college — your study windows are morning & evening 🏫`;
+        return `${v} hours away — squeeze in study sessions during breaks! ⚡`;
+    }
+    // Syllabus hints
+    function syllabusHint(v) {
+        if (v < 20) return "A lot to cover — let's build an aggressive plan 💥";
+        if (v < 50) return `${v}% done — keep pushing! 📚`;
+        if (v < 75) return `${v}% done — you're past halfway! 🎉`;
+        if (v < 90) return `${v}% done — almost there! Focus on remaining topics 🏁`;
+        return `${v}%! Just review and practice now 🌟`;
+    }
+
+    initSlider('study_slider',      'study_bubble',      'study-val',      'h', 'study-hint',      studyHint,      v => v >= 8 ? '#f97316' : '#6366f1');
+    initSlider('sleep_slider',      'sleep_bubble',      'sleep-val',      'h', 'sleep-hint',      sleepHint,      v => v < 6 ? '#f43f5e' : '#10b981');
+    initSlider('distraction_slider','distraction_bubble','distraction-val','h', 'distraction-hint',distractionHint,v => v > 4 ? '#f43f5e' : '#f97316');
+    initSlider('college_slider',    'college_bubble',    'college-val',    'h', 'college-hint',    collegeHint,    v => '#f97316');
+    initSlider('syllabus_slider',   'syllabus_bubble',   'syllabus-val',   '%', 'syllabus-hint',   syllabusHint,   v => '#6366f1');
+
+    /* ───────────────────────────────────────────────
+       HOURS VALIDATION LIVE
+    ─────────────────────────────────────────────── */
+    function validateHours() {
+        const total = getTotalHours();
+        const warn  = document.getElementById('hours-warning');
+        const txt   = document.getElementById('hours-warning-text');
+        if (total > 24) {
+            warn.style.display = 'flex';
+            txt.textContent = `Total: ${total}h — that's more than a day! Adjust to fit within 24h ⚠️`;
+        } else {
+            warn.style.display = 'none';
+        }
+    }
+
+    /* ───────────────────────────────────────────────
+       EXAM DATE FEEDBACK
+    ─────────────────────────────────────────────── */
+    document.getElementById('exam_date').addEventListener('change', function() {
+        const val = this.value;
+        const hint = document.getElementById('exam-hint');
+        if (!val) return;
+        const days = Math.ceil((new Date(val) - new Date()) / 86400000);
+        if (days < 0) {
+            hint.textContent = "⏪ That's in the past — pick a future date!";
+            hint.style.color = '#f43f5e';
+        } else if (days === 0) {
+            hint.textContent = "😅 Exam is today — good luck!";
+            hint.style.color = '#f97316';
+        } else if (days <= 7) {
+            hint.textContent = `🚨 Only ${days} days left — we'll create an intensive plan!`;
+            hint.style.color = '#f43f5e';
+        } else if (days <= 30) {
+            hint.textContent = `🎯 ${days} days to go — solid time to build a strong base!`;
+            hint.style.color = 'var(--accent-emerald)';
+        } else {
+            hint.textContent = `📅 ${days} days — excellent! Plenty of time to excel 🌟`;
+            hint.style.color = 'var(--accent-emerald)';
+        }
+        updatePreview();
+    });
+
+    /* ───────────────────────────────────────────────
+       SUBJECTS
+    ─────────────────────────────────────────────── */
+    let subjectCount = 0;
+    function addSubject(name='', difficulty='Hard') {
+        subjectCount++;
+        const container = document.getElementById('subjectContainer');
+        const div = document.createElement('div');
+        div.className = 'subject-item';
+        div.id = `sub-${subjectCount}`;
+        div.innerHTML = `
+            <div class="subject-item-inner">
+                <div class="subject-num">${subjectCount}</div>
+                <div class="subject-fields">
+                    <input type="text" name="subject_names[]" class="planner-input subject-name-input"
+                        placeholder="e.g. Physics" value="${name}" required>
+                    <div class="difficulty-picker">
+                        <button type="button" class="diff-btn ${difficulty==='Hard'?'active':''}" data-val="Hard" onclick="setDiff(this,'Hard')">🔴 Hard</button>
+                        <button type="button" class="diff-btn ${difficulty==='Medium'?'active':''}" data-val="Medium" onclick="setDiff(this,'Medium')">🟡 Medium</button>
+                        <button type="button" class="diff-btn ${difficulty==='Easy'?'active':''}" data-val="Easy" onclick="setDiff(this,'Easy')">🟢 Easy</button>
+                        <input type="hidden" name="difficulties[]" class="diff-input" value="${difficulty}">
+                    </div>
+                </div>
+                <button type="button" class="subject-remove-btn" onclick="removeSubject(${subjectCount})">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+        `;
+        div.style.opacity = '0';
+        div.style.transform = 'translateY(-12px)';
+        container.appendChild(div);
+        requestAnimationFrame(() => {
+            div.style.transition = 'all 0.35s cubic-bezier(0.19,1,0.22,1)';
+            div.style.opacity = '1';
+            div.style.transform = 'translateY(0)';
+        });
+        div.querySelector('.subject-name-input').addEventListener('input', computeProductivity);
+        computeProductivity();
+    }
+
+    function setDiff(btn, val) {
+        const wrap = btn.closest('.difficulty-picker');
+        wrap.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        wrap.querySelector('.diff-input').value = val;
+        computeProductivity();
+    }
+
+    function removeSubject(id) {
+        const subs = document.querySelectorAll('.subject-item');
+        if (subs.length <= 1) {
+            showToast("You need at least one subject! 📚");
+            return;
+        }
+        const el = document.getElementById(`sub-${id}`);
+        el.style.transition = 'all 0.3s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(20px) scale(0.95)';
+        setTimeout(() => { el.remove(); computeProductivity(); }, 300);
+    }
+
+    // Init with one subject
+    addSubject();
+
+    /* ───────────────────────────────────────────────
+       PRODUCTIVITY PREVIEW
+    ─────────────────────────────────────────────── */
+    function computeProductivity() {
+        const study = parseFloat(document.getElementById('study_slider').value) || 0;
+        const sleep = parseFloat(document.getElementById('sleep_slider').value) || 0;
+        const distraction = parseFloat(document.getElementById('distraction_slider').value) || 0;
+        const syllabus = parseFloat(document.getElementById('syllabus_slider').value) || 0;
+
+        let score = (study * 10) - (distraction * 5) + syllabus;
+        if (sleep < 6) score -= 10;
+        score = Math.max(0, Math.min(100, score));
+
+        document.getElementById('pp-bar-fill').style.width = score + '%';
+        document.getElementById('pp-bar-fill').style.background =
+            score >= 80 ? '#10b981' : score >= 50 ? '#6366f1' : '#f43f5e';
+        document.getElementById('pp-score').textContent = Math.round(score) + '%';
+        document.getElementById('prev-score').textContent = Math.round(score) + '%';
+    }
+
+    /* ───────────────────────────────────────────────
+       QUICK PRESETS
+    ─────────────────────────────────────────────── */
+    function applyPreset(type) {
+        const presets = {
+            light:    { study: 3, sleep: 8, distraction: 3, college: 4, syllabus: 60 },
+            balanced: { study: 5, sleep: 7, distraction: 2, college: 6, syllabus: 40 },
+            intense:  { study: 8, sleep: 6, distraction: 1, college: 4, syllabus: 20 },
+            exam:     { study: 10, sleep: 7, distraction: 0.5, college: 0, syllabus: 70},
+        };
+        const p = presets[type];
+        if (!p) return;
+
+        ['study','sleep','distraction','college','syllabus'].forEach(key => {
+            const slider = document.getElementById(key === 'syllabus' ? 'syllabus_slider' : `${key}_slider`);
+            if (slider) {
+                slider.value = p[key];
+                slider.dispatchEvent(new Event('input'));
+            }
+        });
+
+        showToast(`Preset "${type}" applied! ✨ Adjust as needed.`);
+    }
+
+    /* ───────────────────────────────────────────────
+       LIVE PREVIEW PANEL
+    ─────────────────────────────────────────────── */
+    function updatePreview() {
+        const study = parseFloat(document.getElementById('study_slider').value) || 0;
+        const sleep = parseFloat(document.getElementById('sleep_slider').value) || 0;
+        const distraction = parseFloat(document.getElementById('distraction_slider').value) || 0;
+        const college = parseFloat(document.getElementById('college_slider').value) || 0;
+        const total = study + sleep + distraction + college;
+        const free = Math.max(0, 24 - total);
+
+        // Days left
+        const examDate = document.getElementById('exam_date').value;
+        let daysLeft = '—';
+        if (examDate) {
+            const d = Math.ceil((new Date(examDate) - new Date()) / 86400000);
+            daysLeft = d >= 0 ? d : '—';
+        }
+        document.getElementById('prev-days').textContent = daysLeft;
+        document.getElementById('prev-free').textContent = free.toFixed(1) + 'h';
+
+        // Donut
+        const circumference = 301.59;
+        const arcs = [
+            { id: 'arc-study', val: study },
+            { id: 'arc-sleep', val: sleep },
+            { id: 'arc-college', val: college },
+            { id: 'arc-distraction', val: distraction },
+        ];
+        let offset = 0; // start top
+        arcs.forEach(arc => {
+            const el = document.getElementById(arc.id);
+            const pct = Math.min(arc.val / 24, 1);
+            const dash = pct * circumference;
+            el.style.strokeDasharray = `${dash} ${circumference - dash}`;
+            el.style.strokeDashoffset = -offset;
+            offset += dash;
+        });
+        document.getElementById('donut-free').textContent = free.toFixed(1) + 'h';
+        document.getElementById('donut-center-lbl') && (document.getElementById('donut-center-lbl').textContent = 'free');
+
+        computeProductivity();
+        renderSchedulePreview(study, sleep, distraction, college);
+    }
+
+    function renderSchedulePreview(study, sleep, dist, college) {
+        const el = document.getElementById('preview-schedule');
+        const blocks = [];
+
+        blocks.push({ label: '😴 Sleep', hrs: sleep, color: '#10b981' });
+        blocks.push({ label: '🌅 Morning Routine', hrs: 1, color: '#6366f1' });
+        if (college > 0) {
+            blocks.push({ label: '🏫 College', hrs: college, color: '#f97316' });
+        }
+        blocks.push({ label: '📖 Study', hrs: study, color: '#6366f1' });
+        if (dist > 0) {
+            blocks.push({ label: '📱 Distraction', hrs: dist, color: '#f43f5e' });
+        }
+        const used = sleep + 1 + college + study + dist;
+        const free = Math.max(0, 24 - used);
+        if (free > 0) {
+            blocks.push({ label: '☀️ Free Time', hrs: free, color: '#94a3b8' });
+        }
+
+        el.innerHTML = blocks.map(b => `
+            <div class="schedule-block" style="flex: ${b.hrs};">
+                <div class="schedule-block-bar" style="background: ${b.color}; opacity: 0.85;"></div>
+                <div class="schedule-block-label">${b.label} · ${b.hrs}h</div>
+            </div>
+        `).join('');
+    }
+
+    /* Form submit loading state */
+    document.getElementById('studyForm').addEventListener('submit', function(e) {
+        // One last validation
+        const subjects = document.querySelectorAll('input[name="subject_names[]"]');
+        let hasSubject = false;
+        subjects.forEach(s => { if (s.value.trim()) hasSubject = true; });
+        if (!hasSubject) {
+            e.preventDefault();
+            showToast("Add at least one subject name 📚");
+            return;
+        }
+        const btn = document.getElementById('generate-btn');
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Generating...</span>';
+        btn.disabled = true;
+    });
+
+    // Init preview on load
+    updatePreview();
+    </script>
+</body>
+</html>

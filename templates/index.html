@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Study Planner - Elevate Your Learning</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Top Navbar -->
+        <nav class="top-navbar">
+            <a href="/" class="navbar-brand">
+                <div class="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+                <span class="logo-text primary-gradient-text" style="font-size: 1.25rem;">StudyFlow</span>
+            </a>
+            
+            <div class="navbar-actions">
+                {% if current_user.is_authenticated %}
+                <span class="user-welcome" style="margin-right: 1rem; font-weight: 600; color: var(--text-muted);">Hi, {{ current_user.username }}</span>
+                <a href="{{ url_for('logout') }}" class="nav-link-btn" style="color: var(--accent-red); margin-right: 1rem;"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="nav-link-btn" style="margin-right: 1rem; color: var(--text-main); text-decoration: none; font-weight: 600;">Login</a>
+                <a href="{{ url_for('register') }}" class="btn-hero" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">Join Now</a>
+                {% endif %}
+                <button id="theme-toggle" class="theme-switch-btn" title="Toggle Theme" style="margin-left: 0.5rem;">
+                    <i class="fa-solid fa-circle-half-stroke"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <!-- Main Content (Creative Design) -->
+        <main class="main-content">
+            <!-- Floating Orbs for depth -->
+            <div class="bg-orb orb-primary"></div>
+            <div class="bg-orb orb-secondary"></div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="flash-overlay" style="position: fixed; top: 5rem; left: 50%; transform: translateX(-50%); z-index: 1000; width: 100%; max-width: 400px;">
+                        {% for category, message in messages %}
+                            <div class="flash-msg-premium fade-out flash-{{ category }}" style="background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); padding: 1rem 1.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 0.75rem; color: white; display: flex; align-items: center; gap: 10px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);">
+                                <i class="fa-solid {% if category == 'success' %}fa-circle-check{% else %}fa-circle-exclamation{% endif %}" style="color: {% if category == 'success' %}#34d399{% else %}#f87171{% endif %};"></i>
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <section class="hero-creative reveal">
+                <div class="page-header-row" style="position: absolute; top: 0; right: 0; padding: 2rem 0;">
+                    <!-- Inline nav moved here naturally -->
+                    <div class="inline-nav" id="nav-menu">
+                        <a href="/" class="nav-link"><i class="fa-solid fa-house"></i> <span>Home</span></a>
+                        <a href="/dashboard" class="nav-link"><i class="fa-solid fa-chart-line"></i> <span>Dashboard</span></a>
+                        <a href="/planner" class="nav-link"><i class="fa-solid fa-calendar-plus"></i> <span>New Plan</span></a>
+                    </div>
+                </div>
+
+                <div style="max-width: 900px; z-index: 10; padding-left: 2rem; margin-top: 4rem;">
+                    <h1 class="hero-creative-title">
+                        <span style="color: var(--primary); font-size: 0.35em; display: block; margin-bottom: 1rem; font-family: 'Inter', sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em;">Smart Study Planner</span>
+                        Master Your Exams,<br>
+                        <span class="handcrafted-highlight">Effortlessly.</span>
+                    </h1>
+                    <p class="hero-subtitle" style="font-size: 1.35rem; margin-bottom: 3rem; max-width: 700px;">
+                        The ultimate dynamic workspace for high-achieving students. Let AI craft your perfect exam season timeline in seconds, adapting to your exact college routine and focus limits.
+                    </p>
+                    <div style="display: flex; align-items: center; gap: 2rem;">
+                        {% if current_user.is_authenticated %}
+                        <a href="/dashboard" class="btn-hero" style="padding: 1.2rem 3.5rem; display: inline-flex; align-items: center; gap: 0.75rem;">
+                            Go to Dashboard <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                        {% else %}
+                        <a href="/register" class="btn-hero" style="padding: 1.2rem 3.5rem; display: inline-flex; align-items: center; gap: 0.75rem;">
+                            Get Started Free <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                        {% endif %}
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-weight: 800; color: var(--text-main); font-size: 1.1rem;">+40%</span>
+                            <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Avg Productivity</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="reveal" style="margin-top: 2rem;">
+                <div class="features-clean-grid">
+                    
+                    <!-- Feature 1 -->
+                    <div class="clean-card">
+                        <div class="clean-card-icon" style="color: var(--primary);">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <h3 class="clean-card-title">AI Engine</h3>
+                        <p class="clean-card-desc">Smart algorithms prioritize hard subjects exactly when your focus is at its peak. Generate a mathematically perfect exam schedule.</p>
+                    </div>
+
+                    <!-- Feature 2 -->
+                    <div class="clean-card">
+                        <div class="clean-card-icon" style="color: var(--accent-amber);">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <h3 class="clean-card-title">Focus Shield</h3>
+                        <p class="clean-card-desc">Reclaim your day. Identify high-risk distractions and carve out unbreakable periods for deep work and study.</p>
+                    </div>
+
+                    <!-- Feature 3 -->
+                    <div class="clean-card">
+                        <div class="clean-card-icon" style="color: #3b82f6;">
+                            <i class="fa-solid fa-spa"></i>
+                        </div>
+                        <h3 class="clean-card-title">Mental Clarity</h3>
+                        <p class="clean-card-desc">Integrated rest intervals based on focus-cycle science to completely prevent academic burnout and sustain energy.</p>
+                    </div>
+
+                    <!-- Feature 4 -->
+                    <div class="clean-card">
+                        <div class="clean-card-icon" style="color: var(--accent-emerald);">
+                            <i class="fa-solid fa-trophy"></i>
+                        </div>
+                        <h3 class="clean-card-title">Gamified Goals</h3>
+                        <p class="clean-card-desc">Track progress with rewarding milestones. Turn your daily study grind into a gamified experience you can actually win.</p>
+                    </div>
+
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>

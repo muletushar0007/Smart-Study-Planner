@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard — StudyFlow</title>
+    <meta name="description" content="Your personal study dashboard — track streaks, productivity, achievements and recent plans.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Ambient BG orbs -->
+    <div class="dash-orb dash-orb-1"></div>
+    <div class="dash-orb dash-orb-2"></div>
+    <div class="dash-orb dash-orb-3"></div>
+
+    <div class="app-container">
+        <!-- Top Navbar -->
+        <nav class="top-navbar">
+            <a href="/" class="navbar-brand">
+                <div class="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+                <span class="logo-text primary-gradient-text" style="font-size: 1.25rem;">StudyFlow</span>
+            </a>
+            <div class="navbar-actions">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('logout') }}" class="nav-link-btn" title="Logout" style="color: var(--accent-red); margin-right: 0.5rem;"><i class="fa-solid fa-right-from-bracket"></i></a>
+                {% endif %}
+                <button id="theme-toggle" class="theme-switch-btn" title="Toggle Theme">
+                    <i class="fa-solid fa-circle-half-stroke"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Dashboard -->
+        <main class="dash-main">
+
+            <!-- ── Hero Greeting ── -->
+            <header class="dash-hero">
+                <div class="dash-hero-left">
+                    <p class="dash-eyebrow">
+                        <span class="eyebrow-dot"></span>
+                        <span id="live-time"></span>
+                    </p>
+                    <h1 class="dash-greeting">
+                        <span class="greeting-word" id="greeting-word">Good morning</span><span class="greeting-comma">,</span>
+                        <br>
+                        <span class="greeting-name primary-gradient-text">{{ current_user.username }}</span>
+                        <span class="greeting-wave">👋</span>
+                    </h1>
+                    <p class="dash-subline">Ready to crush your goals? Your focus streak is building momentum.</p>
+                </div>
+                <div class="dash-hero-nav">
+                    <a href="/" class="dash-nav-pill"><i class="fa-solid fa-house"></i><span>Home</span></a>
+                    <a href="/planner" class="dash-nav-pill dash-nav-pill-accent"><i class="fa-solid fa-calendar-plus"></i><span>New Plan</span></a>
+                    <a href="{{ url_for('logout') }}" class="dash-nav-pill" style="color: var(--accent-red);"><i class="fa-solid fa-right-from-bracket"></i><span>Logout</span></a>
+                </div>
+            </header>
+
+            <!-- ── Bento Grid ── -->
+            <div class="bento-grid">
+
+                <!-- Card 1: Streak (tall left) -->
+                <div class="bento-card bento-streak">
+                    <div class="bento-card-inner">
+                        <div class="bento-label"><i class="fa-solid fa-fire"></i> Daily Streak</div>
+                        <div class="streak-center">
+                            <div class="streak-ring-wrap">
+                                <svg class="streak-ring-svg" viewBox="0 0 120 120">
+                                    <circle class="ring-bg" cx="60" cy="60" r="48"/>
+                                    <circle class="ring-fill ring-fill-red" cx="60" cy="60" r="48"
+                                        style="stroke-dasharray: 301.59; stroke-dashoffset: {{ 301.59 - (streak / 30 * 301.59) if streak < 30 else 0 }};"/>
+                                </svg>
+                                <div class="streak-ring-inner">
+                                    <div class="streak-number">{{ streak }}</div>
+                                    <div class="streak-unit">days</div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="streak-goal">Goal: 30 days 🔥</p>
+                        <div id="check-in-container">
+                            {% if not checked_in_today %}
+                            <button id="btn-checkin" onclick="performCheckIn()" class="streak-checkin-btn">
+                                <i class="fa-solid fa-bolt"></i> Check-in Today
+                            </button>
+                            {% else %}
+                            <button class="streak-checkin-btn done" disabled>
+                                <i class="fa-solid fa-check"></i> Done for today!
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="bento-decor bento-decor-streak"></div>
+                </div>
+
+                <!-- Card 2: Today's Focus (Wide Featured) -->
+                <div class="bento-card bento-today-focus">
+                    <div class="bento-label"><i class="fa-solid fa-bolt-lightning"></i> Featured Insight</div>
+                    <div class="focus-wrap">
+                        <div class="focus-val"><span id="today-h">{{ today_study_hours }}</span><span class="focus-unit">hrs</span></div>
+                        <p class="focus-subline">Focus allocated for today</p>
+                    </div>
+                    <div class="focus-mini-bar-wrap">
+                        <div class="focus-mini-bar-fill" style="width: {{ (today_study_hours / 12 * 100) if today_study_hours < 12 else 100 }}%;"></div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Productivity (Small Square) -->
+                <div class="bento-card bento-productivity">
+                    <div class="bento-label"><i class="fa-solid fa-rocket"></i> Intensity</div>
+                    <div class="prod-compact">
+                        <div class="prod-score-sm">{{ overall_progress }}%</div>
+                        <div class="prod-bar-mini">
+                            <div class="prod-bar-fill" style="width: {{ overall_progress }}%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4: Total Wisdom (Small Square) -->
+                <div class="bento-card bento-total">
+                    <div class="bento-label"><i class="fa-solid fa-brain"></i> All-Time</div>
+                    <div class="total-compact">
+                        <div class="total-val-sm">{{ total_study_hours }}h</div>
+                        <p class="total-sub-sm">Total Mastery</p>
+                    </div>
+                </div>
+
+                <!-- Card 5: Achievements Snapshot (Wide) -->
+                <div class="bento-card bento-ach-count">
+                    <div class="bento-label"><i class="fa-solid fa-medal"></i> Milestone Progress</div>
+                    <div class="ach-snap-row">
+                        <div class="ach-count-wrap">
+                            <span class="achievement-counter-num">{{ achievements | length }}</span><span class="ach-count-max">/4</span>
+                        </div>
+                        <div class="ach-mini-stars">
+                            {% for i in range(4) %}
+                            <div class="ach-mini-star {% if i < achievements | length %}lit{% endif %}"><i class="fa-solid fa-star"></i></div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 6: Weekly Insights (Full Width Featured) -->
+                <div class="bento-card chart-section-card">
+                    <div class="dash-section-header no-margin">
+                        <div>
+                            <h2 class="dash-section-title">📊 Training Velocity</h2>
+                            <p class="dash-section-sub">Performance profile over 7 days</p>
+                        </div>
+                        <div class="chart-summary-wrap">
+                            <div class="chart-avg-pill"><i class="fa-solid fa-chart-line"></i> Avg: <span id="weekly-avg-val">0</span>h</div>
+                        </div>
+                    </div>
+                    <div class="chart-canvas-wrap">
+                        <canvas id="weeklyStudyChart"></canvas>
+                    </div>
+                </div>
+
+            </div><!-- /bento-grid -->
+
+
+            <!-- ── Achievements Section ── -->
+            <section class="dash-section">
+                <div class="dash-section-header">
+                    <div>
+                        <h2 class="dash-section-title">🏆 Achievements</h2>
+                        <p class="dash-section-sub">Complete milestones and level up your study game</p>
+                    </div>
+                    <div class="achievement-counter">
+                        <span class="achievement-counter-span">{{ achievements | length }}</span> / 4 Unlocked
+                    </div>
+                </div>
+
+                <div class="ach-layout" id="achievements-list">
+                    <!-- Dynamic badges injected by JS -->
+                </div>
+            </section>
+
+
+            <!-- ── Recent Plans ── -->
+            <section class="dash-section">
+                <div class="dash-section-header">
+                    <div>
+                        <h2 class="dash-section-title">📋 Recent Plans</h2>
+                        <p class="dash-section-sub">Your latest study sessions at a glance</p>
+                    </div>
+                    <a href="/planner" class="plans-new-btn"><i class="fa-solid fa-plus"></i> New Plan</a>
+                </div>
+
+                {% if plans %}
+                <div class="plans-timeline" id="plans-list">
+                    {% for plan in plans %}
+                    <div class="plan-row plan-card slot-block {% if loop.index > 3 %}plan-hidden{% endif %}"
+                         onclick="window.location='{{ url_for('view_plan', plan_id=plan.id) }}'">
+                        <!-- Left: date blob -->
+                        <div class="plan-date-blob">
+                            <div class="plan-date-day">{{ plan.created_at.strftime('%d') }}</div>
+                            <div class="plan-date-mon">{{ plan.created_at.strftime('%b') }}</div>
+                        </div>
+                        <!-- Center: info -->
+                        <div class="plan-info">
+                            <div class="plan-title">Study for <strong>{{ plan.exam_date }}</strong></div>
+                            <div class="plan-meta">
+                                <span class="plan-meta-chip"><i class="fa-solid fa-calendar-days"></i> Generated {{ plan.created_at.strftime('%d %b') }}</span>
+                            </div>
+                        </div>
+                        <!-- Right: score + actions -->
+                        <div class="plan-right">
+                            <div class="plan-score-badge">
+                                <div class="plan-score-num">{{ plan.productivity_score | int }}%</div>
+                                <div class="plan-score-lbl">Score</div>
+                            </div>
+                            <a href="/export/{{ plan.id }}" onclick="event.stopPropagation()" class="plan-export-btn" title="Export PDF">
+                                <i class="fa-solid fa-file-pdf"></i>
+                            </a>
+                            <div class="plan-arrow"><i class="fa-solid fa-chevron-right"></i></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if plans | length > 3 %}
+                <div class="plans-toggle-wrap">
+                    <button id="toggle-plans-btn" class="btn-toggle-plans" onclick="togglePlans()">
+                        <span id="toggle-plans-text">View More</span>
+                        <i id="toggle-plans-icon" class="fa-solid fa-chevron-down"></i>
+                    </button>
+                </div>
+                {% endif %}
+
+                {% else %}
+                <div class="plans-empty">
+                    <div class="plans-empty-icon">📭</div>
+                    <h3>No plans yet</h3>
+                    <p>Create your first study plan to get started!</p>
+                    <a href="/planner" class="streak-checkin-btn" style="margin-top:1rem;display:inline-flex;">
+                        <i class="fa-solid fa-plus"></i> Create Plan
+                    </a>
+                </div>
+                {% endif %}
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+        // Live clock + greeting
+        function updateTime() {
+            const now = new Date();
+            const h = now.getHours();
+            const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('live-time').textContent = timeStr;
+            let greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+            document.getElementById('greeting-word').textContent = greet;
+        }
+        updateTime();
+        setInterval(updateTime, 30000);
+
+        // Toggle plans
+        function togglePlans() {
+            const hiddenCards = document.querySelectorAll('.plan-hidden');
+            const btn = document.getElementById('toggle-plans-btn');
+            const text = document.getElementById('toggle-plans-text');
+            const icon = document.getElementById('toggle-plans-icon');
+            const isExpanded = btn.classList.contains('expanded');
+
+            if (isExpanded) {
+                hiddenCards.forEach((card, i) => {
+                    card.style.animation = `planSlideUp 0.3s ${i * 0.05}s ease forwards`;
+                    setTimeout(() => card.classList.remove('plan-visible'), 300 + i * 50);
+                });
+                text.textContent = 'View More';
+                icon.className = 'fa-solid fa-chevron-down';
+                btn.classList.remove('expanded');
+            } else {
+                hiddenCards.forEach((card, i) => {
+                    card.classList.add('plan-visible');
+                    card.style.animation = `planSlideDown 0.35s ${i * 0.08}s ease forwards`;
+                });
+                text.textContent = 'Show Less';
+                icon.className = 'fa-solid fa-chevron-up';
+                btn.classList.add('expanded');
+            }
+        }
+
+        // Entrance animations on scroll
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in-view');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.bento-card, .ach-card, .plan-row, .dash-hero').forEach(el => {
+            el.classList.add('animate-on-scroll');
+            observer.observe(el);
+        });
+    </script>
+
+    <script>
+        async function performCheckIn() {
+            const btn = document.getElementById('btn-checkin');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking in...';
+            btn.disabled = true;
+            try {
+                const response = await fetch('/check-in', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    cache: 'no-store'
+                });
+                if (response.ok) {
+                    const container = document.getElementById('check-in-container');
+                    container.innerHTML = '<button class="streak-checkin-btn done" disabled><i class="fa-solid fa-check"></i> Done for today!</button>';
+                    await refreshAchievements();
+                } else throw new Error('Server error');
+            } catch (e) {
+                btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Check-in Today';
+                btn.disabled = false;
+                alert('Something went wrong. Please try again.');
+            }
+        }
+
+        async function refreshAchievements() {
+            try {
+                const response = await fetch('/api/achievements', { cache: 'no-store' });
+                const data = await response.json();
+                const unlocked = data.unlocked;
+                const metrics = data.metrics;
+                const defs = data.definitions;
+
+                const listContainer = document.getElementById('achievements-list');
+                const counterSpan = document.querySelector('.achievement-counter-span');
+                const totalCount = Object.keys(defs).length;
+                
+                // Update counter
+                if (counterSpan) {
+                    const prevCount = parseInt(counterSpan.textContent);
+                    counterSpan.textContent = unlocked.length;
+                    if (unlocked.length > prevCount) {
+                        counterSpan.parentElement.classList.add('pulse');
+                        setTimeout(() => counterSpan.parentElement.classList.remove('pulse'), 1000);
+                    }
+                }
+
+                const metricMap = {
+                    'Master Planner': metrics.plans_created,
+                    'Streak Warrior': metrics.streak,
+                    'Productivity King': metrics.max_score,
+                    'Consistent Scholar': metrics.total_check_ins
+                };
+
+                const badgesHtml = Object.keys(defs).map(name => {
+                    const def = defs[name];
+                    const isUnlocked = unlocked.includes(name);
+                    const currentVal = metricMap[name] || 0;
+                    const progress = Math.min(currentVal, def.target);
+                    const pct = (progress / def.target) * 100;
+                    
+                    const stateClass = isUnlocked ? 'unlocked' : (progress > 0 ? 'in-progress' : 'locked');
+                    const iconAttr = isUnlocked ? '' : `<div class="lock-overlay"><i class="fa-solid fa-lock"></i></div>`;
+                    
+                    const statusHtml = isUnlocked 
+                        ? `<div class="achievement-status unlocked-badge"><i class="fa-solid fa-circle-check"></i> Unlocked</div>`
+                        : `<div class="ach-progress-wrap">
+                               <div class="ach-progress-bar"><div class="ach-progress-fill" style="width: ${pct}%"></div></div>
+                               <div class="achievement-status"><i class="fa-solid fa-hourglass-half"></i> ${progress}/${def.target}</div>
+                           </div>`;
+
+                    return `
+                        <div class="ach-card achievement-card ${stateClass}" style="--badge-color: var(--primary); --badge-bg: rgba(129,140,248,0.12);">
+                            <div class="ach-stripe"></div>
+                            <div class="ach-icon-wrap">
+                                <div class="achievement-glow"></div>
+                                <div class="achievement-icon"><i class="fa-solid ${def.icon}"></i></div>
+                                ${iconAttr}
+                            </div>
+                            <div class="ach-text">
+                                <h3 class="achievement-name">${name}</h3>
+                                <p class="achievement-desc">${def.desc}</p>
+                            </div>
+                            ${statusHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                listContainer.innerHTML = badgesHtml;
+            } catch (error) {
+                console.error('Failed to sync achievements', error);
+            }
+        }
+
+        async function initWeeklyChart() {
+            const chartCanvas = document.getElementById('weeklyStudyChart');
+            const ctx = chartCanvas.getContext('2d');
+            
+            try {
+                const response = await fetch('/api/weekly_stats', { cache: 'no-store' });
+                const data = await response.json();
+                
+                const labels = data.days.map(d => d.label);
+                const values = data.days.map(d => d.hours);
+                const isToday = data.days.map(d => d.is_today);
+
+                // Update summary pill
+                document.getElementById('weekly-avg-val').textContent = data.avg_hours;
+
+                // Create Gradients
+                const primaryGrad = ctx.createLinearGradient(0, 0, 0, 400);
+                primaryGrad.addColorStop(0, 'rgba(99, 102, 241, 0.8)');
+                primaryGrad.addColorStop(1, 'rgba(99, 102, 241, 0.05)');
+
+                const todayGrad = ctx.createLinearGradient(0, 0, 0, 400);
+                todayGrad.addColorStop(0, 'rgba(249, 115, 22, 1)');
+                todayGrad.addColorStop(1, 'rgba(249, 115, 22, 0.2)');
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Study Hours',
+                            data: values,
+                            backgroundColor: isToday.map(today => today ? todayGrad : primaryGrad),
+                            borderColor: isToday.map(today => today ? '#f97316' : 'rgba(99, 102, 241, 0.5)'),
+                            borderWidth: (context) => (isToday[context.dataIndex] ? 2 : 1),
+                            borderRadius: (context) => (context.raw > 0 ? 8 : 0),
+                            borderSkipped: false,
+                            hoverBackgroundColor: isToday.map(today => today ? '#fb923c' : '#818cf8'),
+                            pointStyle: 'circle'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 2000,
+                            easing: 'easeOutQuart'
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleFont: { family: 'Outfit', size: 14, weight: 'bold' },
+                                bodyFont: { family: 'Inter', size: 13 },
+                                padding: 12,
+                                cornerRadius: 12,
+                                displayColors: false,
+                                callbacks: {
+                                    label: (context) => ` ✨ ${context.raw} hrs focused`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255, 255, 255, 0.03)', drawBorder: false },
+                                ticks: { 
+                                    color: 'rgba(255, 255, 255, 0.4)', 
+                                    font: { family: 'Outfit', size: 11 },
+                                    stepSize: 2,
+                                    callback: (val) => val + 'h'
+                                }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { 
+                                    color: (context) => (isToday[context.index] ? '#f97316' : 'rgba(255, 255, 255, 0.4)'),
+                                    font: { family: 'Outfit', weight: (context) => (isToday[context.index] ? '800' : '500'), size: 12 } 
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to load chart data", e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshAchievements();
+            initWeeklyChart();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

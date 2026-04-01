@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Plan — StudyFlow</title>
+    <meta name="description" content="Your personalized study plan and optimization report.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='result.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+    <!-- Ambient orbs -->
+    <div class="result-orb result-orb-1"></div>
+    <div class="result-orb result-orb-2"></div>
+
+    <div class="app-container">
+        <!-- Navbar -->
+        <nav class="top-navbar">
+            <a href="/" class="navbar-brand">
+                <div class="logo-icon"><i class="fa-solid fa-bolt"></i></div>
+                <span class="logo-text primary-gradient-text" style="font-size:1.25rem;">StudyFlow</span>
+            </a>
+            <div class="navbar-actions" style="display:flex;align-items:center;gap:1rem;">
+                <a href="/dashboard" class="result-nav-pill"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+                <a href="/planner"   class="result-nav-pill"><i class="fa-solid fa-calendar-plus"></i> New Plan</a>
+                <a href="/export/{{ plan.id }}" class="result-nav-pill result-nav-pill-green">
+                    <i class="fa-solid fa-file-pdf"></i> Export PDF
+                </a>
+                <button id="theme-toggle" class="theme-switch-btn" title="Toggle Theme">
+                    <i class="fa-solid fa-circle-half-stroke"></i>
+                </button>
+            </div>
+        </nav>
+
+        <main class="result-main">
+
+            <!-- ── Page Hero ── -->
+            <header class="result-hero">
+                <div>
+                    <p class="result-eyebrow"><span class="eyebrow-dot"></span> Optimization Report</p>
+                    <h1 class="result-hero-title">Your Study<br><span class="primary-gradient-text">Plan is Ready</span></h1>
+                    <p class="result-hero-sub">Tailored for your <strong>{{ plan.exam_date }}</strong> exam · {{ days_left }} days left</p>
+                </div>
+                <!-- Quick stats -->
+                <div class="result-hero-stats">
+                    <div class="rhs-stat">
+                        <div class="rhs-val {% if score >= 80 %}rhs-green{% elif score >= 50 %}rhs-blue{% else %}rhs-red{% endif %}">{{ score }}%</div>
+                        <div class="rhs-lbl">Score</div>
+                    </div>
+                    <div class="rhs-stat">
+                        <div class="rhs-val {% if risk_level == 'Low' %}rhs-green{% elif risk_level == 'Medium' %}rhs-amber{% else %}rhs-red{% endif %}">
+                            {{ risk_level }}
+                        </div>
+                        <div class="rhs-lbl">Risk</div>
+                    </div>
+                    <div class="rhs-stat">
+                        <div class="rhs-val rhs-blue">{{ plan.study_hours | int }}h</div>
+                        <div class="rhs-lbl">Study/day</div>
+                    </div>
+                    <div class="rhs-stat">
+                        <div class="rhs-val rhs-blue">{{ plan.sleep_hours | int }}h</div>
+                        <div class="rhs-lbl">Sleep</div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ── Warnings & Suggestions ── -->
+            {% if warnings or suggestions %}
+            <div class="alerts-row">
+                {% for w in warnings %}
+                <div class="alert-card alert-warn"><i class="fa-solid fa-triangle-exclamation"></i> {{ w }}</div>
+                {% endfor %}
+                {% for s in suggestions %}
+                <div class="alert-card alert-info"><i class="fa-solid fa-lightbulb"></i> {{ s }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- ── Main Grid ── -->
+            <div class="result-grid">
+
+                <!-- ════ LEFT: Timetable ════ -->
+                <section class="result-timetable-section">
+                    <div class="section-header">
+                        <div>
+                            <h2 class="section-title"><i class="fa-solid fa-calendar-day"></i> Daily Timeline</h2>
+                            <p class="section-sub">Tap Edit to rearrange or modify any slot</p>
+                        </div>
+                        <div class="edit-controls">
+                            <button id="edit-toggle" class="result-edit-btn">
+                                <i class="fa-solid fa-pen-to-square"></i> <span id="edit-text">Edit</span>
+                            </button>
+                            <button id="save-timetable" class="result-save-btn" style="display:none;">
+                                <i class="fa-solid fa-floppy-disk"></i> Save
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="timetable-list" id="timetable-list">
+                        {% for entry in timetable %}
+                        <div class="tt-row {{ entry.type }}" data-type="{{ entry.type }}">
+                            <div class="tt-type-bar"></div>
+                            <div class="tt-icon">
+                                {% if entry.type == 'study' %}<i class="fa-solid fa-book-open"></i>
+                                {% elif entry.type == 'college' %}<i class="fa-solid fa-school"></i>
+                                {% elif entry.type == 'rest' and 'Sleep' in entry.task %}<i class="fa-solid fa-bed"></i>
+                                {% elif entry.type == 'rest' and 'Break' in entry.task %}<i class="fa-solid fa-mug-hot"></i>
+                                {% elif entry.type == 'rest' and 'Lunch' in entry.task %}<i class="fa-solid fa-utensils"></i>
+                                {% else %}<i class="fa-solid fa-sun"></i>{% endif %}
+                            </div>
+                            <div class="tt-content">
+                                <div class="editable-field time-field tt-time" contenteditable="false">{{ entry.time }}</div>
+                                <div class="editable-field task-field tt-task" contenteditable="false">{{ entry.task }}</div>
+                            </div>
+                            <div class="tt-badge-wrap">
+                                {% if entry.type == 'study' %}
+                                <span class="tt-badge badge-study">DEEP WORK</span>
+                                {% elif entry.type == 'college' %}
+                                <span class="tt-badge badge-college">COLLEGE</span>
+                                {% elif 'Sleep' in entry.task %}
+                                <span class="tt-badge badge-sleep">SLEEP</span>
+                                {% elif 'Lunch' in entry.task %}
+                                <span class="tt-badge badge-rest">LUNCH</span>
+                                {% elif 'Break' in entry.task %}
+                                <span class="tt-badge badge-rest">BREAK</span>
+                                {% endif %}
+                            </div>
+                            <div class="tt-edit-actions edit-actions">
+                                <button type="button" class="action-btn delete"
+                                    onmousedown="event.stopPropagation()"
+                                    onclick="handleDelete(this, event)">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Add task UI -->
+                    <div class="add-task-container" style="display:none;">
+                        <button id="add-task-btn" class="add-task-btn">
+                            <i class="fa-solid fa-plus"></i> Add Custom Task
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ════ RIGHT: Sidebar ════ -->
+                <aside class="result-sidebar">
+
+                    <!-- Score ring -->
+                    <div class="sidebar-card score-card">
+                        <div class="score-ring-wrap">
+                            <svg class="score-ring-svg" viewBox="0 0 120 120">
+                                <circle class="score-ring-bg" cx="60" cy="60" r="50"/>
+                                <circle class="score-ring-fill" cx="60" cy="60" r="50"
+                                    style="stroke-dasharray: 314.16; stroke-dashoffset: {{ 314.16 - (score / 100 * 314.16) }};
+                                           stroke: {% if score >= 80 %}#10b981{% elif score >= 50 %}#6366f1{% else %}#f43f5e{% endif %};"/>
+                            </svg>
+                            <div class="score-ring-center">
+                                <div class="score-num">{{ score }}</div>
+                                <div class="score-pct">%</div>
+                            </div>
+                        </div>
+                        <h3 class="score-label">Productivity Score</h3>
+                        <p class="score-sub">Overall readiness for your exam</p>
+                    </div>
+
+                    <!-- Motivation quote -->
+                    <div class="sidebar-card motivation-card">
+                        <div class="motivation-icon"><i class="fa-solid fa-quote-left"></i></div>
+                        <p class="motivation-text">{{ motivation }}</p>
+                    </div>
+
+                    <!-- Subject breakdown -->
+                    <div class="sidebar-card">
+                        <h4 class="sidebar-card-title"><i class="fa-solid fa-list-check"></i> Subject Breakdown</h4>
+                        <div class="subjects-breakdown">
+                            {% for s in subjects_data %}
+                            <div class="sb-row">
+                                <div class="sb-info">
+                                    <div class="sb-name">{{ s.name }}</div>
+                                    <div class="sb-diff diff-{{ s.difficulty | lower }}">{{ s.difficulty }}</div>
+                                </div>
+                                <div class="sb-time">{{ s.time }}h</div>
+                                <div class="sb-bar-wrap">
+                                    <div class="sb-bar-fill diff-bar-{{ s.difficulty | lower }}"
+                                         style="width: {{ [s.time / plan.study_hours * 100, 100] | min | int }}%;"></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="sidebar-actions">
+                        <a href="/export/{{ plan.id }}" class="sidebar-btn sidebar-btn-green">
+                            <i class="fa-solid fa-file-pdf"></i> Export PDF
+                        </a>
+                        <button onclick="copyShareLink()" class="sidebar-btn sidebar-btn-ghost">
+                            <i class="fa-solid fa-link"></i> Copy Link
+                        </button>
+                    </div>
+                </aside>
+            </div>
+
+            <!-- ── Weekly Study Graph ── -->
+            <section class="insights-section">
+                <div class="section-header" style="margin-bottom:2rem;">
+                    <div>
+                        <h2 class="section-title"><i class="fa-solid fa-chart-line"></i> Weekly Study Insights</h2>
+                        <p class="section-sub">Actual study hours from the last 7 days &mdash; today is highlighted</p>
+                    </div>
+                    <div class="chart-tabs">
+                        <button class="chart-tab active" onclick="switchChart('bar', this)">Bar</button>
+                        <button class="chart-tab" onclick="switchChart('line', this)">Line</button>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <canvas id="weeklyChart" height="110"></canvas>
+                </div>
+
+                <!-- Day breakdown strip (filled dynamically) -->
+                <div class="day-strip" id="day-strip">
+                    <!-- JS renders 7 items here -->
+                    <div class="day-strip-loading"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading…</div>
+                </div>
+
+                <!-- Stats bar (filled dynamically) -->
+                <div class="insights-stats">
+                    <div class="is-stat">
+                        <div class="is-val" id="stat-weekly-total">—</div>
+                        <div class="is-lbl">Actual Weekly Total</div>
+                    </div>
+                    <div class="is-stat">
+                        <div class="is-val" id="stat-daily-avg">—</div>
+                        <div class="is-lbl">Daily Average</div>
+                    </div>
+                    <div class="is-stat">
+                        <div class="is-val" id="stat-today-hours">—</div>
+                        <div class="is-lbl">Today's Hours</div>
+                    </div>
+                    <div class="is-stat">
+                        <div class="is-val">{{ days_left }}</div>
+                        <div class="is-lbl">Days Remaining</div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script>
+    /* ══════════════════════════════════════════════════════
+       WEEKLY STUDY INSIGHTS — real data from /api/weekly_stats
+       Today is always the last point (index 6).
+    ══════════════════════════════════════════════════════ */
+
+    const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+
+    // Shared state populated after API fetch
+    let weeklyData  = [];   // array of {label, hours, is_today}
+    let chartType   = 'bar';
+    let weeklyChart = null;
+
+    // ── Colour helpers ──────────────────────────────────────────
+    const C = {
+        normal    : 'rgba(99,102,241,0.82)',
+        today     : 'rgba(249,115,22,0.92)',
+        todayGlow : 'rgba(249,115,22,0.18)',
+        line      : '#6366f1',
+        todayLine : '#f97316',
+        grid      : () => isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+        tick      : () => isDark() ? '#94a3b8' : '#64748b',
+    };
+
+    // ── Custom Chart.js plugin: glow behind today's bar ────────
+    const todayGlowPlugin = {
+        id: 'todayGlow',
+        beforeDatasetsDraw(chart) {
+            const { ctx, chartArea, scales } = chart;
+            if (!chartArea) return;
+            const todayIdx = weeklyData.findIndex(d => d.is_today);
+            if (todayIdx === -1) return;
+            const x         = scales.x.getPixelForValue(todayIdx);
+            const barWidth  = scales.x.width / weeklyData.length;
+            ctx.save();
+            ctx.fillStyle = C.todayGlow;
+            ctx.beginPath();
+            ctx.roundRect(
+                x - barWidth / 2 + 4, chartArea.top,
+                barWidth - 8, chartArea.bottom - chartArea.top,
+                8
+            );
+            ctx.fill();
+            ctx.restore();
+        }
+    };
+
+    // ── Build / rebuild the Chart.js instance ──────────────────
+    function buildChart(type) {
+        if (!weeklyData.length) return;
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        if (weeklyChart) weeklyChart.destroy();
+
+        const labels     = weeklyData.map(d => d.label);
+        const values     = weeklyData.map(d => d.hours);
+        const todayIdx   = weeklyData.findIndex(d => d.is_today);
+        const maxVal     = Math.max(...values, 1);
+
+        // Gradient fill for line chart
+        const grad = ctx.createLinearGradient(0, 0, 0, 300);
+        grad.addColorStop(0, 'rgba(99,102,241,0.38)');
+        grad.addColorStop(1, 'rgba(99,102,241,0)');
+
+        // Per-bar colours + point colours
+        const barColors   = values.map((_, i) => i === todayIdx ? C.today   : C.normal);
+        const pointColors = values.map((_, i) => i === todayIdx ? C.todayLine : C.line);
+        const pointRadius = values.map((_, i) => i === todayIdx ? 8 : (type === 'line' ? 5 : 0));
+        const pointHover  = values.map((_, i) => i === todayIdx ? 10 : 7);
+
+        weeklyChart = new Chart(ctx, {
+            type,
+            plugins: [todayGlowPlugin],
+            data: {
+                labels,
+                datasets: [{
+                    label      : 'Study Hours',
+                    data       : values,
+                    backgroundColor : type === 'bar' ? barColors : grad,
+                    borderColor     : type === 'bar' ? 'transparent' : C.line,
+                    borderWidth     : type === 'bar' ? 0 : 2.5,
+                    borderRadius    : type === 'bar' ? 10 : 0,
+                    fill            : type === 'line',
+                    tension         : 0.42,
+                    pointBackgroundColor : pointColors,
+                    pointBorderColor     : pointColors,
+                    pointBorderWidth     : 2,
+                    pointRadius          : pointRadius,
+                    pointHoverRadius     : pointHover,
+                }]
+            },
+            options: {
+                responsive      : true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend : { display: false },
+                    tooltip: {
+                        backgroundColor : isDark() ? '#1e293b' : '#0f172a',
+                        titleColor      : '#f8fafc',
+                        bodyColor       : '#94a3b8',
+                        padding         : 14,
+                        cornerRadius    : 12,
+                        callbacks: {
+                            title : items => {
+                                const d = weeklyData[items[0].dataIndex];
+                                return d.is_today ? `${d.label} (Today)` : d.label;
+                            },
+                            label : item => {
+                                const h = item.parsed.y;
+                                return h > 0
+                                    ? `  ${h}h focused study`
+                                    : '  No plan recorded';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid : { display: false },
+                        ticks: {
+                            color : C.tick(),
+                            font  : { family: 'Inter', weight: '700', size: 12 },
+                            callback(val, i) {
+                                const d = weeklyData[i];
+                                return d && d.is_today ? `${d.label} ★` : d ? d.label : '';
+                            }
+                        }
+                    },
+                    y: {
+                        min  : 0,
+                        max  : Math.ceil(maxVal + 1.5),
+                        grid : { color: C.grid(), drawBorder: false },
+                        ticks: {
+                            color    : C.tick(),
+                            font     : { family: 'Inter', weight: '600', size: 12 },
+                            callback : v => v + 'h',
+                            stepSize : 1,
+                        }
+                    }
+                },
+                animation: { duration: 700, easing: 'easeOutQuart' }
+            }
+        });
+    }
+
+    // ── Build the mini bar strip below the chart ────────────────
+    function buildDayStrip() {
+        const strip  = document.getElementById('day-strip');
+        const maxH   = Math.max(...weeklyData.map(d => d.hours), 1);
+        strip.innerHTML = weeklyData.map(d => {
+            const heightPct = d.hours > 0 ? Math.max((d.hours / maxH) * 100, 8) : 4;
+            const color     = d.is_today ? '#f97316' : '#6366f1';
+            const opacity   = d.is_today ? 1 : (d.hours > 0 ? 0.85 : 0.3);
+            const todayRing = d.is_today
+                ? 'box-shadow:0 0 0 2px rgba(249,115,22,0.5);border-radius:8px;'
+                : '';
+            return `
+                <div class="day-strip-item${d.is_today ? ' day-today' : ''}">
+                    <div class="day-name">${d.label}${d.is_today ? '<span class="today-dot"></span>' : ''}</div>
+                    <div class="day-bar-wrap">
+                        <div class="day-bar-fill" style="
+                            height:${heightPct}%;
+                            background:${color};
+                            opacity:${opacity};
+                            ${todayRing}
+                        "></div>
+                    </div>
+                    <div class="day-hours${d.is_today ? ' today-hours' : ''}">${d.hours > 0 ? d.hours + 'h' : '—'}</div>
+                </div>`;
+        }).join('');
+    }
+
+    // ── Populate stats cards ────────────────────────────────────
+    function updateStats(json) {
+        const todayEntry = json.days.find(d => d.is_today);
+        document.getElementById('stat-weekly-total').textContent =
+            json.total_hours > 0 ? json.total_hours + 'h' : '—';
+        document.getElementById('stat-daily-avg').textContent =
+            json.avg_hours > 0 ? json.avg_hours + 'h' : '—';
+        document.getElementById('stat-today-hours').textContent =
+            todayEntry && todayEntry.hours > 0 ? todayEntry.hours + 'h' : '—';
+    }
+
+    // ── Fetch real data, then render everything ─────────────────
+    async function loadWeeklyData() {
+        try {
+            const res  = await fetch('/api/weekly_stats');
+            const json = await res.json();
+            weeklyData = json.days;          // [{label,hours,is_today,date}, …]
+            buildChart(chartType);
+            buildDayStrip();
+            updateStats(json);
+        } catch(e) {
+            console.warn('Weekly stats fetch failed', e);
+        }
+    }
+
+    loadWeeklyData();
+
+    // ── Tab switcher ────────────────────────────────────────────
+    function switchChart(type, btn) {
+        chartType = type;
+        document.querySelectorAll('.chart-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        buildChart(type);
+    }
+
+    // Re-render on theme toggle
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+        setTimeout(() => buildChart(chartType), 150);
+    });
+
+    /* ── Timetable Edit Mode ── */
+    const planId   = {{ plan.id }};
+    const editToggle = document.getElementById('edit-toggle');
+    const editText   = document.getElementById('edit-text');
+    const saveBtn    = document.getElementById('save-timetable');
+    const timeline   = document.getElementById('timetable-list');
+    const addContainer = document.querySelector('.add-task-container');
+    const addBtn     = document.getElementById('add-task-btn');
+    let editMode = false;
+    let sortable = null;
+
+    editToggle.addEventListener('click', () => {
+        editMode = !editMode;
+        timeline.classList.toggle('edit-mode', editMode);
+        editToggle.classList.toggle('active', editMode);
+
+        document.querySelectorAll('.editable-field').forEach(f => f.contentEditable = editMode);
+
+        if (editMode) {
+            editText.textContent = 'Done';
+            saveBtn.style.display = 'flex';
+            addContainer.style.display = 'flex';
+            sortable = new Sortable(timeline, {
+                animation: 200,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                draggable: '.tt-row',
+                filter: '.editable-field, .action-btn',
+                preventOnFilter: false,
+                onEnd: () => saveTimetableData(true)
+            });
+        } else {
+            editText.textContent = 'Edit';
+            saveBtn.style.display = 'none';
+            addContainer.style.display = 'none';
+            if (sortable) sortable.destroy();
+        }
+    });
+
+    addBtn && addBtn.addEventListener('click', () => {
+        const newRow = document.createElement('div');
+        newRow.className = 'tt-row rest';
+        newRow.dataset.type = 'extra';
+        newRow.innerHTML = `
+            <div class="tt-type-bar"></div>
+            <div class="tt-icon"><i class="fa-solid fa-star"></i></div>
+            <div class="tt-content">
+                <div class="editable-field time-field tt-time" contenteditable="true">00:00 AM - 00:00 AM</div>
+                <div class="editable-field task-field tt-task" contenteditable="true">New Custom Task</div>
+            </div>
+            <div class="tt-badge-wrap"></div>
+            <div class="tt-edit-actions edit-actions" style="display:flex;">
+                <button type="button" class="action-btn delete"
+                    onmousedown="event.stopPropagation()"
+                    onclick="handleDelete(this, event)">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+        `;
+        newRow.style.opacity = '0';
+        timeline.appendChild(newRow);
+        requestAnimationFrame(() => {
+            newRow.style.transition = 'opacity 0.3s';
+            newRow.style.opacity = '1';
+        });
+        saveTimetableData(true);
+    });
+
+    window.handleDelete = function(btn, e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); }
+        const row = btn.closest('.tt-row');
+        row.style.transition = 'all 0.3s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+        setTimeout(() => { row.remove(); saveTimetableData(true); }, 300);
+    };
+
+    async function saveTimetableData(isSilent = false) {
+        const rows = document.querySelectorAll('.tt-row');
+        const newTimetable = Array.from(rows).map(r => ({
+            time: r.querySelector('.time-field').textContent.trim(),
+            task: r.querySelector('.task-field').textContent.trim(),
+            type: r.dataset.type
+        }));
+
+        if (!isSilent) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+        }
+
+        try {
+            const res = await fetch(`/update_timetable/${planId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ timetable: newTimetable })
+            });
+            if (!isSilent && res.ok) {
+                saveBtn.innerHTML = '<i class="fa-solid fa-check"></i> Saved!';
+                setTimeout(() => {
+                    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save';
+                    saveBtn.disabled = false;
+                }, 1500);
+            }
+        } catch(err) {
+            if (!isSilent) alert('Error connecting to server.');
+        }
+    }
+
+    saveBtn && saveBtn.addEventListener('click', () => saveTimetableData(false));
+
+    function copyShareLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            showToast('Link copied to clipboard! 🔗');
+        }).catch(() => {
+            const el = document.createElement('textarea');
+            el.value = window.location.href;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            showToast('Link copied! 🔗');
+        });
+    }
+
+    function showToast(msg) {
+        let t = document.getElementById('result-toast');
+        if (!t) {
+            t = document.createElement('div');
+            t.id = 'result-toast';
+            t.className = 'planner-toast';
+            document.body.appendChild(t);
+        }
+        t.textContent = msg;
+        t.classList.add('show');
+        clearTimeout(t._timer);
+        t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+    }
+
+    /* scroll entrance */
+    const obs = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); obs.unobserve(e.target); } });
+    }, { threshold: 0.08 });
+    document.querySelectorAll('.tt-row, .sidebar-card, .chart-card').forEach(el => {
+        el.classList.add('animate-on-scroll');
+        obs.observe(el);
+    });
+    </script>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
