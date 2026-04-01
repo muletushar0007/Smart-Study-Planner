@@ -142,5 +142,5 @@ Smart-Study-Planner/
 
 <div align="center">
   <p><b>Stay Focused, Stay Smart! 🚀</b></p>
-  <sub>Designed & Developed by <a href="https://github.com/muletushar0007">Tushar</a></sub>
+  <sub>Made with ❤️ by <a href="https://github.com/muletushar0007">Tushar Mule</a></sub>
 </div>
