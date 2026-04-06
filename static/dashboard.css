@@ -191,6 +191,7 @@
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); /* Premium glassmorphism touch */
     border-radius: 32px;
     overflow: hidden;
     position: relative;
@@ -341,6 +342,14 @@
     gap: 8px;
     transition: all 0.3s cubic-bezier(0.19,1,0.22,1);
     backdrop-filter: blur(8px);
+}
+@keyframes checkinPulse {
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+.streak-checkin-btn:not(.done) {
+    animation: checkinPulse 2s infinite;
 }
 .streak-checkin-btn:hover:not(:disabled) {
     background: rgba(255,255,255,0.2);
@@ -799,9 +808,22 @@
     transition: all 0.4s cubic-bezier(0.19,1,0.22,1);
     cursor: default;
 }
+.ach-card::after {
+    content: "";
+    position: absolute;
+    top: 0; left: -100%;
+    width: 40%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.08), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s cubic-bezier(0.19,1,0.22,1);
+    pointer-events: none;
+}
 .ach-card:hover {
     transform: translateY(-8px);
     box-shadow: 0 24px 48px -12px rgba(0,0,0,0.12);
+}
+.ach-card:hover::after {
+    left: 150%;
 }
 
 /* Top colour stripe */
@@ -1090,9 +1112,11 @@
 
 /* Stagger bento cards */
 .bento-streak    { transition-delay: 0.05s; }
-.bento-productivity { transition-delay: 0.12s; }
-.bento-ach-count { transition-delay: 0.19s; }
-.bento-quote     { transition-delay: 0.26s; }
+.bento-today-focus { transition-delay: 0.12s; }
+.bento-productivity { transition-delay: 0.19s; }
+.bento-total     { transition-delay: 0.26s; }
+.bento-ach-count { transition-delay: 0.33s; }
+.chart-section-card { transition-delay: 0.40s; }
 
 .ach-card:nth-child(1) { transition-delay: 0.05s; }
 .ach-card:nth-child(2) { transition-delay: 0.12s; }

@@ -85,10 +85,11 @@
 
                 <!-- ════ LEFT: Timetable ════ -->
                 <section class="result-timetable-section">
+                    <!-- Section header -->
                     <div class="section-header">
                         <div>
-                            <h2 class="section-title"><i class="fa-solid fa-calendar-day"></i> Daily Timeline</h2>
-                            <p class="section-sub">Tap Edit to rearrange or modify any slot</p>
+                            <h2 class="section-title"><i class="fa-solid fa-route"></i> Daily Journey</h2>
+                            <p class="section-sub">Your day at a glance · scroll or swipe to explore</p>
                         </div>
                         <div class="edit-controls">
                             <button id="edit-toggle" class="result-edit-btn">
@@ -100,45 +101,87 @@
                         </div>
                     </div>
 
-                    <div class="timetable-list" id="timetable-list">
-                        {% for entry in timetable %}
-                        <div class="tt-row {{ entry.type }}" data-type="{{ entry.type }}">
-                            <div class="tt-type-bar"></div>
-                            <div class="tt-icon">
-                                {% if entry.type == 'study' %}<i class="fa-solid fa-book-open"></i>
-                                {% elif entry.type == 'college' %}<i class="fa-solid fa-school"></i>
-                                {% elif entry.type == 'rest' and 'Sleep' in entry.task %}<i class="fa-solid fa-bed"></i>
-                                {% elif entry.type == 'rest' and 'Break' in entry.task %}<i class="fa-solid fa-mug-hot"></i>
-                                {% elif entry.type == 'rest' and 'Lunch' in entry.task %}<i class="fa-solid fa-utensils"></i>
-                                {% else %}<i class="fa-solid fa-sun"></i>{% endif %}
-                            </div>
-                            <div class="tt-content">
-                                <div class="editable-field time-field tt-time" contenteditable="false">{{ entry.time }}</div>
-                                <div class="editable-field task-field tt-task" contenteditable="false">{{ entry.task }}</div>
-                            </div>
-                            <div class="tt-badge-wrap">
-                                {% if entry.type == 'study' %}
-                                <span class="tt-badge badge-study">DEEP WORK</span>
-                                {% elif entry.type == 'college' %}
-                                <span class="tt-badge badge-college">COLLEGE</span>
-                                {% elif 'Sleep' in entry.task %}
-                                <span class="tt-badge badge-sleep">SLEEP</span>
-                                {% elif 'Lunch' in entry.task %}
-                                <span class="tt-badge badge-rest">LUNCH</span>
-                                {% elif 'Break' in entry.task %}
-                                <span class="tt-badge badge-rest">BREAK</span>
-                                {% endif %}
-                            </div>
-                            <div class="tt-edit-actions edit-actions">
-                                <button type="button" class="action-btn delete"
-                                    onmousedown="event.stopPropagation()"
-                                    onclick="handleDelete(this, event)">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                        {% endfor %}
+                    <!-- Time-of-day jump pills -->
+                    <div class="tt-jump-pills">
+                        <button class="tt-jump-pill" onclick="jumpToTime('morning')"><span>🌅</span> Morning</button>
+                        <button class="tt-jump-pill" onclick="jumpToTime('afternoon')"><span>☀️</span> Afternoon</button>
+                        <button class="tt-jump-pill" onclick="jumpToTime('evening')"><span>🌙</span> Evening</button>
+                        <button class="tt-jump-pill tt-jump-pill-now" id="jump-now-btn" onclick="jumpToNow()" style="display:none;"><span class="now-pulse-dot"></span> Now</button>
                     </div>
+
+                    <!-- Horizontal carousel track -->
+                    <div class="tt-carousel-wrap">
+                        <button class="tt-arrow tt-arrow-left" id="tt-prev" onclick="scrollCarousel(-1)" aria-label="Scroll left">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+
+                        <div class="tt-carousel" id="timetable-list">
+                            {% for entry in timetable %}
+                            <div class="tt-card {{ entry.type }}" data-type="{{ entry.type }}" data-time="{{ entry.time }}">
+                                <!-- Top row: icon + badge -->
+                                <div class="tt-card-top">
+                                    <div class="tt-card-icon">
+                                        {% if entry.type == 'study' %}<i class="fa-solid fa-bolt"></i>
+                                        {% elif entry.type == 'college' %}<i class="fa-solid fa-school"></i>
+                                        {% elif 'Sleep' in entry.task %}<i class="fa-solid fa-moon"></i>
+                                        {% elif 'Break' in entry.task or 'Water' in entry.task %}<i class="fa-solid fa-mug-hot"></i>
+                                        {% elif 'Lunch' in entry.task %}<i class="fa-solid fa-utensils"></i>
+                                        {% elif 'Routine' in entry.task or 'Morning' in entry.task %}<i class="fa-solid fa-sun"></i>
+                                        {% elif 'Recap' in entry.task or 'Plan' in entry.task %}<i class="fa-solid fa-lightbulb"></i>
+                                        {% else %}<i class="fa-solid fa-leaf"></i>{% endif %}
+                                    </div>
+                                    <div class="tt-card-badge-wrap">
+                                        {% if entry.type == 'study' %}
+                                        <span class="tt-card-badge badge-study">FOCUS</span>
+                                        {% elif entry.type == 'college' %}
+                                        <span class="tt-card-badge badge-college">COLLEGE</span>
+                                        {% elif 'Sleep' in entry.task %}
+                                        <span class="tt-card-badge badge-sleep">SLEEP</span>
+                                        {% elif 'Lunch' in entry.task %}
+                                        <span class="tt-card-badge badge-rest">LUNCH</span>
+                                        {% elif 'Break' in entry.task or 'Water' in entry.task %}
+                                        <span class="tt-card-badge badge-rest">BREAK</span>
+                                        {% else %}
+                                        <span class="tt-card-badge badge-free">FREE</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- Task name -->
+                                <div class="tt-card-body">
+                                    <div class="editable-field task-field tt-card-task" contenteditable="false">{{ entry.task }}</div>
+                                </div>
+
+                                <!-- Bottom: time -->
+                                <div class="tt-card-foot">
+                                    <i class="fa-regular fa-clock"></i>
+                                    <div class="editable-field time-field tt-card-time" contenteditable="false">{{ entry.time }}</div>
+                                </div>
+
+                                <!-- Edit actions -->
+                                <div class="tt-edit-actions edit-actions">
+                                    <button type="button" class="action-btn delete"
+                                        onmousedown="event.stopPropagation()"
+                                        onclick="handleDelete(this, event)">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Now indicator overlay -->
+                                <div class="tt-now-indicator" style="display:none;">
+                                    <span class="now-pulse-dot"></span> Now
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <button class="tt-arrow tt-arrow-right" id="tt-next" onclick="scrollCarousel(1)" aria-label="Scroll right">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Scroll progress dots -->
+                    <div class="tt-progress-track" id="tt-progress-track"></div>
 
                     <!-- Add task UI -->
                     <div class="add-task-container" style="display:none;">
@@ -465,12 +508,112 @@
         setTimeout(() => buildChart(chartType), 150);
     });
 
+    /* ══════════════════════════════════════════════
+       CAROUSEL LOGIC
+    ══════════════════════════════════════════════ */
+    const carousel = document.getElementById('timetable-list');
+    const progressTrack = document.getElementById('tt-progress-track');
+
+    // Build progress dots
+    function buildProgressDots() {
+        const cards = carousel.querySelectorAll('.tt-card');
+        progressTrack.innerHTML = '';
+        const totalDots = Math.ceil(cards.length / 3); // roughly 3 visible at a time
+        for (let i = 0; i < totalDots; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'tt-progress-dot' + (i === 0 ? ' active' : '');
+            dot.addEventListener('click', () => {
+                carousel.scrollTo({ left: carousel.clientWidth * i, behavior: 'smooth' });
+            });
+            progressTrack.appendChild(dot);
+        }
+    }
+    buildProgressDots();
+
+    // Update active dot on scroll
+    carousel.addEventListener('scroll', () => {
+        const progress = carousel.scrollLeft / (carousel.scrollWidth - carousel.clientWidth);
+        const dots = progressTrack.querySelectorAll('.tt-progress-dot');
+        const active = Math.round(progress * (dots.length - 1));
+        dots.forEach((d, i) => d.classList.toggle('active', i === active));
+        // Arrow visibility
+        document.getElementById('tt-prev').style.opacity = carousel.scrollLeft > 10 ? '1' : '0.3';
+        document.getElementById('tt-next').style.opacity =
+            carousel.scrollLeft < carousel.scrollWidth - carousel.clientWidth - 10 ? '1' : '0.3';
+    });
+
+    function scrollCarousel(dir) {
+        const cardWidth = carousel.querySelector('.tt-card').offsetWidth + 20;
+        carousel.scrollBy({ left: dir * cardWidth * 2, behavior: 'smooth' });
+    }
+
+    // Jump to time-of-day
+    function jumpToTime(period) {
+        const cards = Array.from(carousel.querySelectorAll('.tt-card'));
+        const targets = { morning: ['AM'], afternoon: ['12:', '01:P', '02:P', '03:P', '1:', '2:', '3:'], evening: ['06:0 PM', '07:', '08:', '09:', '10:'] };
+        // Find first card whose time string contains a PM hour for afternoon/evening
+        let target;
+        if (period === 'morning') {
+            target = cards.find(c => { const t = c.dataset.time || ''; return t.includes('AM') && !t.includes('11:00'); });
+        } else if (period === 'afternoon') {
+            target = cards.find(c => { const t = c.dataset.time || ''; return (t.includes('12:') || t.match(/0[1-4]:\d{2} PM/)); });
+        } else {
+            target = cards.find(c => { const t = c.dataset.time || ''; return t.match(/0[6-9]:\d{2} PM|10:\d{2} PM/); });
+        }
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            target.classList.add('tt-card-highlight');
+            setTimeout(() => target.classList.remove('tt-card-highlight'), 1800);
+        }
+    }
+
+    // "Now" indicator — match current real time to a card
+    function activateNowIndicator() {
+        const now = new Date();
+        const nowMins = now.getHours() * 60 + now.getMinutes();
+        const cards = Array.from(carousel.querySelectorAll('.tt-card'));
+
+        function parseTimeMins(str) {
+            const m = str.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!m) return null;
+            let h = parseInt(m[1]), min = parseInt(m[2]), period = m[3].toUpperCase();
+            if (period === 'PM' && h !== 12) h += 12;
+            if (period === 'AM' && h === 12) h = 0;
+            return h * 60 + min;
+        }
+
+        let nowCard = null;
+        for (let i = 0; i < cards.length; i++) {
+            const timeStr = cards[i].dataset.time || '';
+            const parts = timeStr.split('-');
+            if (parts.length < 2) continue;
+            const start = parseTimeMins(parts[0].trim());
+            const end   = parseTimeMins(parts[1].trim());
+            if (start === null || end === null) continue;
+            if (nowMins >= start && nowMins < end) { nowCard = cards[i]; break; }
+        }
+
+        if (nowCard) {
+            nowCard.classList.add('tt-card-now');
+            const indicator = nowCard.querySelector('.tt-now-indicator');
+            if (indicator) indicator.style.display = 'flex';
+            document.getElementById('jump-now-btn').style.display = 'flex';
+            // Scroll into view after brief delay
+            setTimeout(() => nowCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }), 600);
+        }
+    }
+    activateNowIndicator();
+
+    function jumpToNow() {
+        const nowCard = carousel.querySelector('.tt-card-now');
+        if (nowCard) nowCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+
     /* ── Timetable Edit Mode ── */
     const planId   = {{ plan.id }};
     const editToggle = document.getElementById('edit-toggle');
     const editText   = document.getElementById('edit-text');
     const saveBtn    = document.getElementById('save-timetable');
-    const timeline   = document.getElementById('timetable-list');
     const addContainer = document.querySelector('.add-task-container');
     const addBtn     = document.getElementById('add-task-btn');
     let editMode = false;
@@ -478,7 +621,7 @@
 
     editToggle.addEventListener('click', () => {
         editMode = !editMode;
-        timeline.classList.toggle('edit-mode', editMode);
+        carousel.classList.toggle('edit-mode', editMode);
         editToggle.classList.toggle('active', editMode);
 
         document.querySelectorAll('.editable-field').forEach(f => f.contentEditable = editMode);
@@ -487,13 +630,14 @@
             editText.textContent = 'Done';
             saveBtn.style.display = 'flex';
             addContainer.style.display = 'flex';
-            sortable = new Sortable(timeline, {
+            sortable = new Sortable(carousel, {
                 animation: 200,
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
-                draggable: '.tt-row',
+                draggable: '.tt-card',
                 filter: '.editable-field, .action-btn',
                 preventOnFilter: false,
+                direction: 'horizontal',
                 onEnd: () => saveTimetableData(true)
             });
         } else {
@@ -505,17 +649,22 @@
     });
 
     addBtn && addBtn.addEventListener('click', () => {
-        const newRow = document.createElement('div');
-        newRow.className = 'tt-row rest';
-        newRow.dataset.type = 'extra';
-        newRow.innerHTML = `
-            <div class="tt-type-bar"></div>
-            <div class="tt-icon"><i class="fa-solid fa-star"></i></div>
-            <div class="tt-content">
-                <div class="editable-field time-field tt-time" contenteditable="true">00:00 AM - 00:00 AM</div>
-                <div class="editable-field task-field tt-task" contenteditable="true">New Custom Task</div>
+        const newCard = document.createElement('div');
+        newCard.className = 'tt-card rest';
+        newCard.dataset.type = 'extra';
+        newCard.dataset.time = '00:00 AM - 00:00 AM';
+        newCard.innerHTML = `
+            <div class="tt-card-top">
+                <div class="tt-card-icon"><i class="fa-solid fa-star"></i></div>
+                <div class="tt-card-badge-wrap"><span class="tt-card-badge badge-free">CUSTOM</span></div>
             </div>
-            <div class="tt-badge-wrap"></div>
+            <div class="tt-card-body">
+                <div class="editable-field task-field tt-card-task" contenteditable="true">New Custom Task</div>
+            </div>
+            <div class="tt-card-foot">
+                <i class="fa-regular fa-clock"></i>
+                <div class="editable-field time-field tt-card-time" contenteditable="true">00:00 AM - 00:00 AM</div>
+            </div>
             <div class="tt-edit-actions edit-actions" style="display:flex;">
                 <button type="button" class="action-btn delete"
                     onmousedown="event.stopPropagation()"
@@ -523,13 +672,15 @@
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
+            <div class="tt-now-indicator" style="display:none;"></div>
         `;
-        newRow.style.opacity = '0';
-        timeline.appendChild(newRow);
+        newCard.style.opacity = '0';
+        carousel.appendChild(newCard);
         requestAnimationFrame(() => {
-            newRow.style.transition = 'opacity 0.3s';
-            newRow.style.opacity = '1';
+            newCard.style.transition = 'opacity 0.3s';
+            newCard.style.opacity = '1';
         });
+        buildProgressDots();
         saveTimetableData(true);
     });
 
@@ -543,7 +694,7 @@
     };
 
     async function saveTimetableData(isSilent = false) {
-        const rows = document.querySelectorAll('.tt-row');
+        const rows = document.querySelectorAll('.tt-card');
         const newTimetable = Array.from(rows).map(r => ({
             time: r.querySelector('.time-field').textContent.trim(),
             task: r.querySelector('.task-field').textContent.trim(),
@@ -607,10 +758,13 @@
     const obs = new IntersectionObserver(entries => {
         entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in-view'); obs.unobserve(e.target); } });
     }, { threshold: 0.08 });
-    document.querySelectorAll('.tt-row, .sidebar-card, .chart-card').forEach(el => {
+    document.querySelectorAll('.tt-card, .sidebar-card, .chart-card').forEach(el => {
         el.classList.add('animate-on-scroll');
         obs.observe(el);
     });
+
+    // Initial arrow state
+    document.getElementById('tt-prev').style.opacity = '0.3';
     </script>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
