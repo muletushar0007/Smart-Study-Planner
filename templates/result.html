@@ -88,106 +88,38 @@
                     <!-- Section header -->
                     <div class="section-header">
                         <div>
-                            <h2 class="section-title"><i class="fa-solid fa-route"></i> Daily Journey</h2>
-                            <p class="section-sub">Your day at a glance · scroll or swipe to explore</p>
-                        </div>
-                        <div class="edit-controls">
-                            <button id="edit-toggle" class="result-edit-btn">
-                                <i class="fa-solid fa-pen-to-square"></i> <span id="edit-text">Edit</span>
-                            </button>
-                            <button id="save-timetable" class="result-save-btn" style="display:none;">
-                                <i class="fa-solid fa-floppy-disk"></i> Save
-                            </button>
+                            <h2 class="section-title"><i class="fa-solid fa-calendar-week"></i> Weekly Timetable</h2>
+                            <p class="section-sub">Your 7-day master schedule · scroll horizontally to view all days</p>
                         </div>
                     </div>
 
-                    <!-- Time-of-day jump pills -->
-                    <div class="tt-jump-pills">
-                        <button class="tt-jump-pill" onclick="jumpToTime('morning')"><span>🌅</span> Morning</button>
-                        <button class="tt-jump-pill" onclick="jumpToTime('afternoon')"><span>☀️</span> Afternoon</button>
-                        <button class="tt-jump-pill" onclick="jumpToTime('evening')"><span>🌙</span> Evening</button>
-                        <button class="tt-jump-pill tt-jump-pill-now" id="jump-now-btn" onclick="jumpToNow()" style="display:none;"><span class="now-pulse-dot"></span> Now</button>
-                    </div>
-
-                    <!-- Horizontal carousel track -->
-                    <div class="tt-carousel-wrap">
-                        <button class="tt-arrow tt-arrow-left" id="tt-prev" onclick="scrollCarousel(-1)" aria-label="Scroll left">
-                            <i class="fa-solid fa-chevron-left"></i>
-                        </button>
-
-                        <div class="tt-carousel" id="timetable-list">
-                            {% for entry in timetable %}
-                            <div class="tt-card {{ entry.type }}" data-type="{{ entry.type }}" data-time="{{ entry.time }}">
-                                <!-- Top row: icon + badge -->
-                                <div class="tt-card-top">
-                                    <div class="tt-card-icon">
-                                        {% if entry.type == 'study' %}<i class="fa-solid fa-bolt"></i>
-                                        {% elif entry.type == 'college' %}<i class="fa-solid fa-school"></i>
-                                        {% elif 'Sleep' in entry.task %}<i class="fa-solid fa-moon"></i>
-                                        {% elif 'Break' in entry.task or 'Water' in entry.task %}<i class="fa-solid fa-mug-hot"></i>
-                                        {% elif 'Lunch' in entry.task %}<i class="fa-solid fa-utensils"></i>
-                                        {% elif 'Routine' in entry.task or 'Morning' in entry.task %}<i class="fa-solid fa-sun"></i>
-                                        {% elif 'Recap' in entry.task or 'Plan' in entry.task %}<i class="fa-solid fa-lightbulb"></i>
-                                        {% else %}<i class="fa-solid fa-leaf"></i>{% endif %}
+                    <!-- Weekly Calendar Grid -->
+                    <div class="weekly-calendar-grid">
+                        {% for day, day_entries in timetable.items() %}
+                        <div class="calendar-day-col">
+                            <div class="calendar-day-header">{{ day }}</div>
+                            <div class="calendar-day-slots">
+                                {% for entry in day_entries %}
+                                <div class="cal-slot {{ entry.type }}">
+                                    <!-- Top: Time & Icon -->
+                                    <div class="cal-slot-top">
+                                        <div class="cal-slot-time">{{ entry.time }}</div>
+                                        <div class="cal-slot-icon">
+                                            {% if entry.type == 'study' %}<i class="fa-solid fa-bolt"></i>
+                                            {% elif entry.type == 'college' %}<i class="fa-solid fa-building-columns"></i>
+                                            {% elif 'Sleep' in entry.task %}<i class="fa-solid fa-moon"></i>
+                                            {% elif 'Lunch' in entry.task %}<i class="fa-solid fa-utensils"></i>
+                                            {% elif 'Recap' in entry.task or 'Plan' in entry.task %}<i class="fa-solid fa-lightbulb"></i>
+                                            {% else %}<i class="fa-solid fa-leaf"></i>{% endif %}
+                                        </div>
                                     </div>
-                                    <div class="tt-card-badge-wrap">
-                                        {% if entry.type == 'study' %}
-                                        <span class="tt-card-badge badge-study">FOCUS</span>
-                                        {% elif entry.type == 'college' %}
-                                        <span class="tt-card-badge badge-college">COLLEGE</span>
-                                        {% elif 'Sleep' in entry.task %}
-                                        <span class="tt-card-badge badge-sleep">SLEEP</span>
-                                        {% elif 'Lunch' in entry.task %}
-                                        <span class="tt-card-badge badge-rest">LUNCH</span>
-                                        {% elif 'Break' in entry.task or 'Water' in entry.task %}
-                                        <span class="tt-card-badge badge-rest">BREAK</span>
-                                        {% else %}
-                                        <span class="tt-card-badge badge-free">FREE</span>
-                                        {% endif %}
-                                    </div>
+                                    <!-- Middle: Task -->
+                                    <div class="cal-slot-task">{{ entry.task }}</div>
                                 </div>
-
-                                <!-- Task name -->
-                                <div class="tt-card-body">
-                                    <div class="editable-field task-field tt-card-task" contenteditable="false">{{ entry.task }}</div>
-                                </div>
-
-                                <!-- Bottom: time -->
-                                <div class="tt-card-foot">
-                                    <i class="fa-regular fa-clock"></i>
-                                    <div class="editable-field time-field tt-card-time" contenteditable="false">{{ entry.time }}</div>
-                                </div>
-
-                                <!-- Edit actions -->
-                                <div class="tt-edit-actions edit-actions">
-                                    <button type="button" class="action-btn delete"
-                                        onmousedown="event.stopPropagation()"
-                                        onclick="handleDelete(this, event)">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
-                                </div>
-
-                                <!-- Now indicator overlay -->
-                                <div class="tt-now-indicator" style="display:none;">
-                                    <span class="now-pulse-dot"></span> Now
-                                </div>
+                                {% endfor %}
                             </div>
-                            {% endfor %}
                         </div>
-
-                        <button class="tt-arrow tt-arrow-right" id="tt-next" onclick="scrollCarousel(1)" aria-label="Scroll right">
-                            <i class="fa-solid fa-chevron-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Scroll progress dots -->
-                    <div class="tt-progress-track" id="tt-progress-track"></div>
-
-                    <!-- Add task UI -->
-                    <div class="add-task-container" style="display:none;">
-                        <button id="add-task-btn" class="add-task-btn">
-                            <i class="fa-solid fa-plus"></i> Add Custom Task
-                        </button>
+                        {% endfor %}
                     </div>
                 </section>
 

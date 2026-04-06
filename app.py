@@ -464,171 +464,161 @@ def analyze():
     def slot_str(start, end):
         return f"{m2s(start)} - {m2s(end)}"
 
-    # ── Build Ordered Day Events ──────────────────────────────────
-    # Sleep: user sets how many hours; we fix wake-up at 06:00 AM (360 min)
-    # and compute bed-time accordingly.
+    # ── Build Ordered Day Events for 7 Days ───────────────────────
+    import random
+    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    weekly_timetable = {}
+
     WAKE_UP   = 6 * 60          # 06:00 AM in minutes
     MORNING_ROUTINE = 60        # 1 h
     sleep_mins = int(sleep_hours_input * 60)
-    bed_time   = WAKE_UP - sleep_mins           # may be previous-day negative → normalise by modulo
-    bed_time_display = (bed_time % (24 * 60))   # keep in 0-1440 range for display
+    bed_time   = WAKE_UP - sleep_mins
+    bed_time_display = (bed_time % (24 * 60))
 
-    # College slot (fixed 10:30 AM – end based on college_hours_input)
-    COLLEGE_START = 10 * 60 + 30               # 10:30 AM
-    COLLEGE_END   = COLLEGE_START + int(college_hours_input * 60)
-    RETURN_HOME   = COLLEGE_END + 30           # 30-min travel
+    for day in days_of_week:
+        is_weekend = (day in ["Saturday", "Sunday"])
+        daily_college_hours = 0 if is_weekend else college_hours_input
 
-    # Build a list of "blocked" periods (inclusive minutes, start≤end)
-    blocked = []
-    if college_hours_input > 0:
-        blocked.append((COLLEGE_START, RETURN_HOME))
+        COLLEGE_START = 10 * 60 + 30               # 10:30 AM
+        COLLEGE_END   = COLLEGE_START + int(daily_college_hours * 60)
+        RETURN_HOME   = COLLEGE_END + 30           # 30-min travel
 
-    # Build the raw schedule as a list of (start_min, end_min, task, type)
-    raw = []
+        blocked = []
+        if daily_college_hours > 0:
+            blocked.append((COLLEGE_START, RETURN_HOME))
 
-    # Sleep
-    if bed_time < 0:
-        # spans midnight — show as previous-night entry
-        raw.append((bed_time % (24*60), 24*60-1, f"😴 Sleep ({sleep_hours_input:.0f} hrs)", "rest"))
-        raw.append((0, WAKE_UP, f"😴 Sleep (cont.)", "rest"))
-    else:
-        raw.append((bed_time_display, WAKE_UP, f"😴 Sleep ({sleep_hours_input:.0f} hrs)", "rest"))
+        raw = []
 
-    # Morning routine
-    raw.append((WAKE_UP, WAKE_UP + MORNING_ROUTINE, "🌅 Morning Routine & Quick Refresh", "rest"))
+        # Sleep
+        if bed_time < 0:
+            raw.append((bed_time % (24*60), 24*60-1, f"😴 Sleep ({sleep_hours_input:.0f} hrs)", "rest"))
+            raw.append((0, WAKE_UP, f"😴 Sleep (cont.)", "rest"))
+        else:
+            raw.append((bed_time_display, WAKE_UP, f"😴 Sleep ({sleep_hours_input:.0f} hrs)", "rest"))
 
-    # College (if any)
-    if college_hours_input > 0:
-        raw.append((COLLEGE_START, COLLEGE_END, "🏫 College / Classes (Fixed)", "college"))
-        raw.append((COLLEGE_END, RETURN_HOME, "🏠 Return Home & Relax", "rest"))
+        # Morning routine
+        raw.append((WAKE_UP, WAKE_UP + MORNING_ROUTINE, "🌅 Morning Routine & Quick Refresh", "rest"))
 
-    # ── Distribute Study Blocks intelligently ─────────────────────
-    # Study windows available (minutes):
-    # If college: morning = after routine until college; evening = after return
-    # If no college: full day after routine until wind-down (22:00)
-    WIND_DOWN_START = 22 * 60   # 10:00 PM
-    LUNCH_START     = 13 * 60   # 1:00 PM (only relevant if no college or after college)
-    LUNCH_END       = 13 * 60 + 45
+        # College (if any)
+        if daily_college_hours > 0:
+            raw.append((COLLEGE_START, COLLEGE_END, "🏫 College / Classes (Fixed)", "college"))
+            raw.append((COLLEGE_END, RETURN_HOME, "🏠 Return Home & Relax", "rest"))
 
-    CHUNK_MAX   = 90   # max continuous study minutes
-    SHORT_BREAK = 10   # minutes between chunks
-    LONG_BREAK  = 45   # lunch / mid-day break
+        # ── Distribute Study Blocks intelligently ─────────────────────
+        WIND_DOWN_START = 22 * 60   # 10:00 PM
+        LUNCH_START     = 13 * 60   # 1:00 PM
+        LUNCH_END       = 13 * 60 + 45
+        CHUNK_MAX   = 90
+        SHORT_BREAK = 10
+        LONG_BREAK  = 45
 
-    # Flatten the blocked-time ranges (we won't schedule study here)
-    def is_blocked(start, end):
-        for bs, be in blocked:
-            if start < be and end > bs:
-                return True
-        return False
+        if daily_college_hours > 0:
+            free_windows = [
+                (WAKE_UP + MORNING_ROUTINE, COLLEGE_START),
+                (RETURN_HOME, WIND_DOWN_START),
+            ]
+        else:
+            free_windows = [
+                (WAKE_UP + MORNING_ROUTINE, WIND_DOWN_START),
+            ]
 
-    # Create ordered free windows
-    if college_hours_input > 0:
-        free_windows = [
-            (WAKE_UP + MORNING_ROUTINE, COLLEGE_START),  # morning window
-            (RETURN_HOME, WIND_DOWN_START),               # evening window
-        ]
-    else:
-        free_windows = [
-            (WAKE_UP + MORNING_ROUTINE, WIND_DOWN_START), # full day
-        ]
+        # Interleave & Shuffle subjects for daily variety
+        day_subjects = list(subjects_to_schedule)
+        random.shuffle(day_subjects) 
+        hard_subjs = [s for s in day_subjects if s["difficulty"] == "Hard"]
+        other_subjs = [s for s in day_subjects if s["difficulty"] != "Hard"]
+        
+        interleaved = []
+        while hard_subjs or other_subjs:
+            if hard_subjs: interleaved.append(hard_subjs.pop(0))
+            if other_subjs: interleaved.append(other_subjs.pop(0))
 
-    # ── Subject Interleaving (Burnout Prevention) ─────────────────
-    hard_subjs = [s for s in subjects_to_schedule if s["difficulty"] == "Hard"]
-    other_subjs = [s for s in subjects_to_schedule if s["difficulty"] != "Hard"]
-    
-    interleaved = []
-    while hard_subjs or other_subjs:
-        if hard_subjs: interleaved.append(hard_subjs.pop(0))
-        if other_subjs: interleaved.append(other_subjs.pop(0))
+        study_queue = []
+        for subj in interleaved:
+            subj_mins = subj["time"] * 60
+            chunk_max = 60 if subj["difficulty"] == "Hard" else 90
+            while subj_mins > 0:
+                chunk = min(chunk_max, subj_mins)
+                study_queue.append((subj["name"], subj["difficulty"], chunk))
+                subj_mins -= chunk
 
-    # Build a flat queue of study minutes broken into chunks (60m for Hard, 90m for Others)
-    study_queue = []
-    for subj in interleaved:
-        subj_mins = subj["time"] * 60
-        chunk_max = 60 if subj["difficulty"] == "Hard" else 90
-        while subj_mins > 0:
-            chunk = min(chunk_max, subj_mins)
-            study_queue.append((subj["name"], subj["difficulty"], chunk))
-            subj_mins -= chunk
+        study_blocks = []
+        q_idx = 0
 
-    study_blocks = []  # will hold (start, end, task_label)
-    q_idx = 0
-    lunch_inserted = {}  # per window key
+        for win_start, win_end in free_windows:
+            cur = win_start
 
-    for win_start, win_end in free_windows:
-        cur = win_start
+            # Insert lunch if window crosses 13:00 and no college
+            if daily_college_hours == 0 and win_start < LUNCH_START < win_end:
+                while q_idx < len(study_queue) and cur < LUNCH_START:
+                    name, diff, chunk_mins = study_queue[q_idx]
+                    available = LUNCH_START - cur
+                    actual = min(chunk_mins, available)
+                    if actual >= 20:
+                        icon = "⚡ Focus" if diff == "Hard" else "📖 Study"
+                        study_blocks.append((cur, cur + actual, f"{icon}: {name}", "study"))
+                        cur += actual
+                        if actual >= chunk_mins:
+                            q_idx += 1
+                            if q_idx < len(study_queue) and cur + SHORT_BREAK < LUNCH_START:
+                                study_blocks.append((cur, cur + SHORT_BREAK, "🥤 Refresh", "rest"))
+                                cur += SHORT_BREAK
+                        else:
+                            study_queue[q_idx] = (name, diff, chunk_mins - actual)
+                            break
+                    else: break
 
-        # Insert lunch if window crosses 13:00 and no college
-        if college_hours_input == 0 and win_start < LUNCH_START < win_end:
-            # Schedule study before lunch
-            while q_idx < len(study_queue) and cur < LUNCH_START:
+                if cur <= LUNCH_START: cur = LUNCH_START
+                study_blocks.append((cur, cur + LONG_BREAK, "🥗 Lunch", "rest"))
+                cur += LONG_BREAK
+
+            # Main study loop for the window
+            while q_idx < len(study_queue) and cur < win_end:
                 name, diff, chunk_mins = study_queue[q_idx]
-                available = LUNCH_START - cur
+                available = win_end - cur
                 actual = min(chunk_mins, available)
-                if actual >= 20:
-                    icon = "⚡ Deep Focus" if diff == "Hard" else "📖 Study"
-                    study_blocks.append((cur, cur + actual, f"{icon}: {name}", "study"))
-                    cur += actual
-                    if actual >= chunk_mins:
-                        q_idx += 1
-                        if q_idx < len(study_queue) and cur + SHORT_BREAK < LUNCH_START:
-                            study_blocks.append((cur, cur + SHORT_BREAK, "🥤 Refreshment Break", "rest"))
-                            cur += SHORT_BREAK
-                    else:
-                        study_queue[q_idx] = (name, diff, chunk_mins - actual)
-                        break
-                else: break
+                
+                if actual < 20: break 
+                
+                icon = "⚡ Focus" if diff == "Hard" else "📖 Study"
+                study_blocks.append((cur, cur + actual, f"{icon}: {name}", "study"))
+                cur += actual
 
-            if cur <= LUNCH_START: cur = LUNCH_START
-            study_blocks.append((cur, cur + LONG_BREAK, "🥗 Lunch & Hydration", "rest"))
-            cur += LONG_BREAK
+                if actual >= chunk_mins:
+                    q_idx += 1
+                    if q_idx < len(study_queue) and cur + SHORT_BREAK <= win_end:
+                        study_blocks.append((cur, cur + SHORT_BREAK, "⏱ Stretch", "rest"))
+                        cur += SHORT_BREAK
+                else:
+                    study_queue[q_idx] = (name, diff, chunk_mins - actual)
+                    break
 
-        # Main study loop for the window
-        while q_idx < len(study_queue) and cur < win_end:
-            name, diff, chunk_mins = study_queue[q_idx]
-            available = win_end - cur
-            actual = min(chunk_mins, available)
-            
-            if actual < 20: break # Skip tiny fragments
-            
-            icon = "⚡ Deep Focus" if diff == "Hard" else "📖 Study"
-            study_blocks.append((cur, cur + actual, f"{icon}: {name}", "study"))
-            cur += actual
+            # Daily Recap
+            if cur < win_end and win_end == WIND_DOWN_START:
+                recap_mins = 20
+                if cur + recap_mins <= win_end:
+                    study_blocks.append((win_end - recap_mins, win_end, "💡 Recap", "study"))
+                    cur = win_end - recap_mins
 
-            if actual >= chunk_mins:
-                q_idx += 1
-                if q_idx < len(study_queue) and cur + SHORT_BREAK <= win_end:
-                    study_blocks.append((cur, cur + SHORT_BREAK, "⏱ Short Stretch & Water", "rest"))
-                    cur += SHORT_BREAK
-            else:
-                study_queue[q_idx] = (name, diff, chunk_mins - actual)
-                break
+            if cur < win_end:
+                study_blocks.append((cur, win_end, "🌟 Free Time", "rest"))
 
-        # Daily Recap (end of last window)
-        if cur < win_end and win_end == WIND_DOWN_START:
-            recap_mins = 20
-            if cur + recap_mins <= win_end:
-                study_blocks.append((win_end - recap_mins, win_end, "💡 Quick Daily Recap", "study"))
-                cur = win_end - recap_mins
+        raw.extend(study_blocks)
+        raw.append((WIND_DOWN_START, WIND_DOWN_START + 30, "📝 Plan Tomorrow", "rest"))
+        
+        raw.sort(key=lambda x: x[0])
 
-        if cur < win_end:
-            study_blocks.append((cur, win_end, "🌟 Free Time / Rest", "rest"))
+        day_timetable = []
+        for item in raw:
+            start, end, task, typ = item
+            day_timetable.append({
+                "time": slot_str(start, end),
+                "task": task,
+                "type": typ,
+            })
+        weekly_timetable[day] = day_timetable
 
-    raw.extend(study_blocks)
-    raw.append((WIND_DOWN_START, WIND_DOWN_START + 30, "📝 Plan for Tomorrow", "rest"))
-
-    # ── Sort & deduplicate ────────────────────────────────────────
-    raw.sort(key=lambda x: x[0])
-
-    timetable = []
-    for item in raw:
-        start, end, task, typ = item
-        # Clamp display to same-day (don't show midnight crossings weirdly)
-        timetable.append({
-            "time": slot_str(start, end),
-            "task": task,
-            "type": typ,
-        })
+    timetable = weekly_timetable
 
     # ── Motivation ────────────────────────────────────────────────
     if productivity_score > 80:
