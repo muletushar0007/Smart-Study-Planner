@@ -4,6 +4,7 @@
 # Credentials (CRITICAL - DO NOT UPLOAD TO GITHUB)
 service-account-file.json
 *.json
+!vercel.json
 
 # SQLite backups/legacy
 *.db
