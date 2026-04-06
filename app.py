@@ -48,10 +48,19 @@ try:
         cred = credentials.Certificate(service_account_path)
     
     firebase_admin.initialize_app(cred)
+    db = firestore.client()
+    firebase_init_error = None
 except Exception as e:
     print(f"Error: Firebase Admin failed to initialize. {e}")
+    db = None
+    firebase_init_error = str(e)
 
-db = firestore.client()
+# Check database connection before doing anything
+@app.before_request
+def check_db_initialization():
+    # Only block paths that aren't static to avoid breaking all assets
+    if db is None and not request.path.startswith('/static'):
+        return f"🔥 Firebase failed to initialize on Vercel Backend! Please ensure FIREBASE_SERVICE_ACCOUNT_JSON is pasted correctly in Vercel Environment Variables.<br><br><b>Exact Error:</b> {firebase_init_error}", 500
 
 # --- Flask-Login Setup ---
 login_manager = LoginManager()
