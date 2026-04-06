@@ -36,11 +36,20 @@ FIREBASE_CONFIG = {
 
 # Initialize Firebase Admin
 try:
-    service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "service-account-file.json")
-    cred = credentials.Certificate(service_account_path)
+    firebase_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if firebase_json:
+        # Load from environment variable (Useful for Vercel)
+        import json
+        cred_dict = json.loads(firebase_json)
+        cred = credentials.Certificate(cred_dict)
+    else:
+        # Load from file (Useful for local development)
+        service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH", "service-account-file.json")
+        cred = credentials.Certificate(service_account_path)
+    
     firebase_admin.initialize_app(cred)
 except Exception as e:
-    print(f"Warning: Firebase Admin not initialized. {e}")
+    print(f"Error: Firebase Admin failed to initialize. {e}")
 
 db = firestore.client()
 
