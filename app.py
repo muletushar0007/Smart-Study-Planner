@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import io
 import base64
 import json
-from xhtml2pdf import pisa
+
 
 # Load environment variables
 load_dotenv()
@@ -704,22 +704,8 @@ def export_pdf(plan_id):
     plan = plan_doc.to_dict()
     timetable = plan.get('timetable', [])
     
-    # Render the specialized print-friendly template
-    html = render_template('export_pdf.html', plan=plan, timetable=timetable)
-    
-    # Generate PDF
-    pdf_output = io.BytesIO()
-    pisa_status = pisa.CreatePDF(io.BytesIO(html.encode("utf-8")), dest=pdf_output)
-    
-    if pisa_status.err:
-        return "Error generating PDF", 500
-    
-    # Prepare response
-    response = make_response(pdf_output.getvalue())
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'attachment; filename=Study_Plan_{plan["exam_date"]}.pdf'
-    
-    return response
+    # Just render the HTML template directly. The template will use window.print().
+    return render_template('export_pdf.html', plan=plan, timetable=timetable)
 
 @app.route('/update_timetable/<plan_id>', methods=['POST'])
 @login_required
